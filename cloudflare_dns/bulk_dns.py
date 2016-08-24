@@ -36,12 +36,6 @@ def add_new_domain(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
 
 
 @configured
-def add_new_domains(domain_names, domain_added_cb=None, cf_lib_wrapper=None):
-    for domain_name in domain_names:
-        add_new_domain(domain_name, domain_added_cb=domain_added_cb, cf_lib_wrapper=cf_lib_wrapper)
-
-
-@configured
 def cli(args, cf_lib_wrapper=None):
     counter = 0
 

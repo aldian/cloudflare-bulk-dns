@@ -19,10 +19,12 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     def test_create_a_zone(self):
         try:
-            zone_info = self.lib_wrapper.create_a_zone('sharp-sneeze.win')
+            domain_name = 'answer-educate.download'
+            zone_info = self.lib_wrapper.create_a_zone(domain_name)
             id_key = "id"
             self.assertTrue(id_key in zone_info)
             self.assertNotEqual("", zone_info[id_key].strip())
+            self.assertEqual(domain_name, zone_info['name'])
             print("ZONE INFO ID:", zone_info.get(id_key), file=sys.stderr)
             print("ZONE INFO:", zone_info, file=sys.stderr)
         except CloudFlareAPIError as e:

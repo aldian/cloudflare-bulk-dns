@@ -25,27 +25,12 @@ class TestBulkDns(unittest.TestCase):
             responses.append(response)
             self.assertEqual('ZONE INFO ID', response['id'])
 
-        self.cf_lib_wrapper.create_a_zone = MagicMock(return_value={'id': 'ZONE INFO ID'})
+        domain_name = 'add-purer-happen.host'
+        self.cf_lib_wrapper.create_a_zone = MagicMock(return_value={'id': 'ZONE INFO ID', 'name': domain_name})
         bulk_dns.add_new_domain(
-            'add-purer-happen.host', domain_added_cb=domain_added_cb,
+            domain_name, domain_added_cb=domain_added_cb,
             cf_lib_wrapper=self.cf_lib_wrapper)
         self.assertEqual(1, len(responses))
-
-    def test_add_new_domains(self):
-        responses = []
-
-        def domain_added_cb(**kwargs):
-            self.assertTrue(kwargs['succeed'])
-            response = kwargs['response']
-            responses.append(response)
-            self.assertEqual('ZONE INFO ID', response['id'])
-
-        self.cf_lib_wrapper.create_a_zone = MagicMock(return_value={'id': 'ZONE INFO ID'})
-        domain_names = ['add-purer-happen.host', 'analyze-dry.win', 'juiciest-old-flap.tech']
-        bulk_dns.add_new_domains(
-            domain_names, domain_added_cb=domain_added_cb,
-            cf_lib_wrapper=self.cf_lib_wrapper)
-        self.assertEqual(3, len(responses))
 
     def test_cli_add_new_domains(self):
         responses = []
