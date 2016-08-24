@@ -24,7 +24,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
             self.assertNotEqual('', zone_info[id].strip())
             print("ZONE INFO:", zone_info['id'], file=sys.stderr)
         except CloudFlareAPIError as e:
-            if "host already exists" not in e.message:
+            if "already exists" not in e.message:
                 raise e
 
 if __name__ == '__main__':
