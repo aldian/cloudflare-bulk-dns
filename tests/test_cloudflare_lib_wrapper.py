@@ -19,13 +19,15 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     def test_create_a_zone(self):
         try:
-            zone_info = self.lib_wrapper.create_a_zone('juiciest-old-flap.tech')
-            self.assertTrue('id' in zone_info)
-            self.assertNotEqual('', zone_info[id].strip())
-            print("ZONE INFO:", zone_info['id'], file=sys.stderr)
+            zone_info = self.lib_wrapper.create_a_zone('instruct-rustier-adds.press')
+            id_key = "id"
+            self.assertTrue(id_key in zone_info)
+            self.assertNotEqual("", zone_info[id_key].strip())
+            print("ZONE INFO:", zone_info.get(id_key), file=sys.stderr)
         except CloudFlareAPIError as e:
             if "already exists" not in e.message:
                 raise e
+
 
 if __name__ == '__main__':
     unittest.main()
