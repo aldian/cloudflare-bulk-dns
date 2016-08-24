@@ -9,6 +9,11 @@ from cloudflare_dns import CloudFlareLibWrapper
 
 
 class TestCloudFlareLibWrapper(unittest.TestCase):
+    """The testing of integration with the CloudFlare API
+
+    You need to put the correct api key and email values to
+    environment variables CLOUDFLARE_API_KEY AND CLOUDFLARE_API_EMAIL
+    """
     def setUp(self):
         api_key = os.environ.get('CLOUDFLARE_API_KEY')
         api_email = os.environ.get('CLOUDFLARE_API_EMAIL')
