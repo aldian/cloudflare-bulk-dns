@@ -3,6 +3,7 @@ import os
 import sys
 from functools import wraps
 from CloudFlare.exceptions import CloudFlareAPIError
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from cloudflare_dns import CloudFlareLibWrapper
 
 
