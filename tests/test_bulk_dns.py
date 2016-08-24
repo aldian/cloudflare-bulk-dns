@@ -44,10 +44,14 @@ class TestBulkDns(unittest.TestCase):
             sys.stdout = old_stdout
             self.assertEqual("added [{0}]: {1}".format(len(responses), domain_name), my_stdout.getvalue().strip())
 
+        add_new_domain_real = bulk_dns.add_new_domain
         bulk_dns.add_new_domain = add_new_domain_mock
+
         self.cf_lib_wrapper.create_a_zone = MagicMock(return_value={'id': 'ZONE INFO ID'})
         bulk_dns.cli(['--add-new-domains', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
         self.assertEqual(30, len(responses))
+
+        bulk_dns.add_new_domain = add_new_domain_real
 
 if __name__ == '__main__':
     unittest.main()
