@@ -47,12 +47,12 @@ def cli(args, cf_lib_wrapper=None):
         with open("cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
                 dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second), "wb") as csv_file:
             writer = csv.writer(csv_file)
-            writer.writerow(['name', 'status','created_on'])
+            writer.writerow(['name', 'status', 'id', 'type', 'created_on'])
 
             def domain_added_cb(succeed=None, response=None, exception=None):
                 if succeed:
                     output_text = "added [{0}]: {1}".format(counter + 1, response['name'])
-                    writer.writerow([response['name'], 'added', response['id'], response['created_on']])
+                    writer.writerow([response['name'], response['status'], response['id'], response['type'], response['created_on']])
                 else:
                     output_text = "failed [{0}]: {1}".format(counter + 1, exception.message)
                     writer.writerow([response['name'], 'failed'])
