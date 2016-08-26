@@ -30,11 +30,18 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
             self.assertTrue(id_key in zone_info)
             self.assertNotEqual("", zone_info[id_key].strip())
             self.assertEqual(domain_name, zone_info['name'])
-            print("ZONE INFO ID:", zone_info.get(id_key), file=sys.stderr)
-            print("ZONE INFO:", zone_info, file=sys.stderr)
+            print("CREATED ZONE INFO ID:", zone_info.get(id_key), file=sys.stderr)
+            print("CREATED ZONE INFO:", zone_info, file=sys.stderr)
         except CloudFlareAPIError as e:
             if "already exists" not in e.message:
                 raise e
+
+    def test_delete_a_zone(self):
+        domain_name = 'answer-educate.download'
+        zone_info = self.lib_wrapper.delete_a_zone_by_name(domain_name)
+        if zone_info is not None:
+            print("DELETED ZONE INFO:", zone_info, file=sys.stderr)
+            self.assertTrue('id' in zone_info)
 
 
 if __name__ == '__main__':
