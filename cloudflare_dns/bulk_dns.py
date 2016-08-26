@@ -35,7 +35,7 @@ def add_new_domain(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
         if "already exists" not in e.message:
             raise e
         if domain_added_cb is not None and hasattr(domain_added_cb, '__call__'):
-            domain_added_cb(succeed=False, exception=e)
+            domain_added_cb(succeed=False, response={'name': domain_name}, exception=e)
 
 
 @configured
@@ -47,15 +47,16 @@ def cli(args, cf_lib_wrapper=None):
         with open("cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
                 dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second), "wb") as csv_file:
             writer = csv.writer(csv_file)
+            writer.writerow(['name', 'status','created_on'])
 
             def domain_added_cb(succeed=None, response=None, exception=None):
-                output_text = ''
                 if succeed:
                     output_text = "added [{0}]: {1}".format(counter + 1, response['name'])
+                    writer.writerow([response['name'], 'added', response['id'], response['created_on']])
                 else:
                     output_text = "failed [{0}]: {1}".format(counter + 1, exception.message)
+                    writer.writerow([response['name'], 'failed'])
                 print(output_text)
-                writer.writerow([output_text])
 
             domains_file_name = args[1]
             with open(domains_file_name) as f:
