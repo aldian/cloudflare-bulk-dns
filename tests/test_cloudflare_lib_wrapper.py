@@ -22,9 +22,31 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_create_a_zone(self):
+    def test_get_zone_info(self):
+        domain_name = 'answer-educate.download'
+
+        # make sure zone existed before getting its info
         try:
-            domain_name = 'answer-educate.download'
+            self.lib_wrapper.create_a_zone(domain_name)
+        except:
+            pass
+
+        # get the zone info
+        zone_info = self.lib_wrapper.get_zone_info(domain_name)
+        self.assertTrue('id' in zone_info)
+        print("GET ZONE INFO:", zone_info, file=sys.stderr)
+
+    def test_create_a_zone(self):
+        domain_name = 'answer-educate.download'
+
+        # make sure zone didn't exist before creating it
+        try:
+            self.lib_wrapper.delete_a_zone_by_name(domain_name)
+        except:
+            pass
+
+        # create the zone
+        try:
             zone_info = self.lib_wrapper.create_a_zone(domain_name)
             id_key = "id"
             self.assertTrue(id_key in zone_info)
@@ -38,10 +60,23 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     def test_delete_a_zone(self):
         domain_name = 'answer-educate.download'
+
+        # make sure zone existed before deleting it
+        try:
+            self.lib_wrapper.create_a_zone(domain_name)
+        except:
+            pass
+
+        # delete the zone
         zone_info = self.lib_wrapper.delete_a_zone_by_name(domain_name)
         if zone_info is not None:
             print("DELETED ZONE INFO:", zone_info, file=sys.stderr)
             self.assertTrue('id' in zone_info)
+
+    # def test_create_a_dns_record(self):
+    #     domain_name = 'answer-educate.download'
+    #     self.lib_wrapper.create_a_dns_record(domain_name, )
+    #     pass
 
 
 if __name__ == '__main__':

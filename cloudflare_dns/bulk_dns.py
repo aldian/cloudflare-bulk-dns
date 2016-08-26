@@ -43,7 +43,8 @@ def cli(args, cf_lib_wrapper=None):
     counter = 0
     dt = datetime.datetime.now()
 
-    if args[0] == '--add-new-domains':
+    cmd = args[0]
+    if cmd == '--add-new-domains':
         with open("cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
                 dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second), "wb") as csv_file:
             writer = csv.writer(csv_file)
