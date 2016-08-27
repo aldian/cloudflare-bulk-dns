@@ -1,3 +1,4 @@
+from __future__ import print_function
 from cStringIO import StringIO
 import os
 import re
@@ -32,8 +33,10 @@ class TestBulkDns(unittest.TestCase):
             try:
                 bulk_dns.configured(real_func)()
                 self.fail()
-            except ValueError:
-                pass
+            except ValueError as e:
+                self.assertTrue('CLOUDFLARE_API_KEY' in e.message)
+            except:
+                self.fail()
 
     def test_environment_email_key_not_set_error(self):
         def real_func():
@@ -45,8 +48,10 @@ class TestBulkDns(unittest.TestCase):
             try:
                 bulk_dns.configured(real_func)()
                 self.fail()
-            except ValueError:
-                pass
+            except ValueError as e:
+                self.assertTrue('CLOUDFLARE_API_EMAIL ' in e.message)
+            except:
+                self.fail()
 
     def test_environment_completely_set_and_real_func_called(self):
         def real_func(cf_lib_wrapper=None):
@@ -210,14 +215,92 @@ class TestBulkDns(unittest.TestCase):
                 row_number += 1
         os.remove(csv_file_name)
 
-    def test_cli_delete_all_records(self):
+    def test_delete_all_records_succeed(self):
+        domain_name = 'add-purer-happen.host'
+        responses = []
+
+        def record_deleted_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            responses.append(response)
+            self.assertEqual('DNS RECORD ID {0}'.format(len(responses)), response['id'])
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.list_dns_records = MagicMock(
+            return_value=[{'id': 'DNS RECORD ID 1'}, {'id': 'DNS RECORD ID 2'}])
+        self.cf_lib_wrapper.delete_dns_record = MagicMock(
+            side_effect=[{'id': 'DNS RECORD ID 1'}, {'id': 'DNS RECORD ID 2'}])
+
+        bulk_dns.delete_all_records(
+            domain_name, record_deleted_cb=record_deleted_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(2, len(responses))
+
+    def test_cli_delete_all_records_succeed(self):
+        def delete_all_records_mock(domain_name, record_deleted_cb=None, cf_lib_wrapper=None):
+            record_deleted_cb(succeed=True, response={'id': 'DNS RECORD ID'})
+
+        delete_all_records_original = bulk_dns.delete_all_records
+        bulk_dns.delete_all_records = MagicMock(side_effect=delete_all_records_mock)
+
         old_stdout = sys.stdout
         sys.stdout = my_stdout = StringIO()
+
         bulk_dns.cli(['--delete-all-records', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
+
         sys.stdout = old_stdout
+        bulk_dns.delete_all_records = delete_all_records_original
+
         match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
         csv_file_name = match.group(1)
         self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('zone name', row[0])
+                    self.assertEqual('record id', row[1])
+                    self.assertEqual('status', row[2])
+                else:
+                    self.assertEqual(row[1], 'DNS RECORD ID')
+                    self.assertEqual(row[2], 'deleted')
+                row_number += 1
+            self.assertEqual(31, row_number)
+        os.remove(csv_file_name)
+
+    def test_cli_delete_all_records_failed(self):
+        def delete_all_records_mock(domain_name, record_deleted_cb=None, cf_lib_wrapper=None):
+            record_deleted_cb(succeed=False, response={'id': 'DNS RECORD ID'})
+
+        delete_all_records_original = bulk_dns.delete_all_records
+        bulk_dns.delete_all_records = MagicMock(side_effect=delete_all_records_mock)
+
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli(['--delete-all-records', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+        bulk_dns.delete_all_records = delete_all_records_original
+
+        match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
+        csv_file_name = match.group(1)
+        self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('zone name', row[0])
+                    self.assertEqual('record id', row[1])
+                    self.assertEqual('status', row[2])
+                else:
+                    self.assertEqual(row[1], 'DNS RECORD ID')
+                    self.assertEqual(row[2], 'failed')
+                row_number += 1
+            self.assertEqual(31, row_number)
         os.remove(csv_file_name)
 
 if __name__ == '__main__':

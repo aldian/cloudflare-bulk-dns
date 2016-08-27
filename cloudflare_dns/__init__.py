@@ -60,5 +60,14 @@ class CloudFlareLibWrapper(object):
             zone_id, data={'name': record_name, 'type': record_type, 'content': content})
 
     def delete_dns_record(self, zone_id, record_id):
+        """ Deleting a DNS record
+
+        :param zone_id: The zone identifier
+        :param record_id: The record identifier
+        :return: a dictionary, for example
+        {
+        "id": "372e67954025e0ba6aaa6d586b9e0b59"
+        }
+        """
         return self.cf.zones.dns_records.delete(
             zone_id, record_id)

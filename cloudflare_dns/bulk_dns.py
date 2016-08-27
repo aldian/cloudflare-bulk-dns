@@ -38,6 +38,18 @@ def add_new_domain(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
             domain_added_cb(succeed=False, response={'name': domain_name}, exception=e)
 
 
+def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None):
+    zone_info = cf_lib_wrapper.get_zone_info(domain_name)
+    page = 1
+    while True:
+        dns_records = cf_lib_wrapper.list_dns_records(zone_info['id'], page=page, per_page=20)
+        for dns_record in dns_records:
+            record_info = cf_lib_wrapper.delete_dns_record(zone_info['id'], dns_record['id'])
+            record_deleted_cb(succeed=True, response=record_info)
+        if len(dns_records) < 20:
+            break
+
+
 @configured
 def cli(args, cf_lib_wrapper=None):
     counter = 0
@@ -73,6 +85,28 @@ def cli(args, cf_lib_wrapper=None):
             dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
         with open(csv_name, "wb") as csv_file:
             writer = csv.writer(csv_file)
+            writer.writerow(['zone name', 'record id', 'status'])
+
+            def record_deleted_cb_wrapper(zone_name):
+                def record_deleted_cb(succeed=None, response=None, exception=None):
+                    if succeed:
+                        output_text = "deleted [{0}]: record {1} of {2}".format(counter + 1, response['id'], zone_name)
+                        writer.writerow([zone_name, response['id'], 'deleted'])
+                    else:
+                        output_text = "failed [{0}]: while deleting record {1} of {2}".format(
+                            counter + 1, response['id'], zone_name)
+                        writer.writerow([zone_name, response['id'], 'failed'])
+                    print(output_text)
+                return record_deleted_cb
+
+            domains_file_name = args[1]
+            with open(domains_file_name) as f:
+                print("Deleting records from zones listed in {0}:".format(domains_file_name))
+                for line in f:
+                    zone_name = line.strip()
+                    delete_all_records(zone_name, record_deleted_cb=record_deleted_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                    counter += 1
+                print("Deleted {0} records.".format(counter))
         print("CSV file {0} generated.".format(csv_name))
 
 if __name__ == "__main__":
