@@ -45,8 +45,9 @@ def cli(args, cf_lib_wrapper=None):
 
     cmd = args[0]
     if cmd == '--add-new-domains':
-        with open("cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
-                dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second), "wb") as csv_file:
+        csv_name = "cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
+                dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        with open(csv_name, "wb") as csv_file:
             writer = csv.writer(csv_file)
             writer.writerow(['name', 'status', 'id', 'type', 'created_on'])
 
@@ -66,6 +67,7 @@ def cli(args, cf_lib_wrapper=None):
                     add_new_domain(line.strip(), domain_added_cb=domain_added_cb, cf_lib_wrapper=cf_lib_wrapper)
                     counter += 1
                 print("Added {0} new domains.".format(counter))
+            print("CSV file {0} generated.".format(csv_name))
 
 if __name__ == "__main__":
     cli(sys.argv[1:])
