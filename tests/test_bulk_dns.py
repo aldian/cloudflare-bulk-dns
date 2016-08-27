@@ -26,7 +26,7 @@ class TestBulkDns(unittest.TestCase):
             self.assertEqual('ZONE INFO ID', response['id'])
 
         domain_name = 'add-purer-happen.host'
-        self.cf_lib_wrapper.create_a_zone = MagicMock(return_value={'id': 'ZONE INFO ID', 'name': domain_name})
+        self.cf_lib_wrapper.create_zone = MagicMock(return_value={'id': 'ZONE INFO ID', 'name': domain_name})
         bulk_dns.add_new_domain(
             domain_name, domain_added_cb=domain_added_cb,
             cf_lib_wrapper=self.cf_lib_wrapper)
@@ -67,7 +67,7 @@ class TestBulkDns(unittest.TestCase):
         add_new_domain_real = bulk_dns.add_new_domain
         bulk_dns.add_new_domain = add_new_domain_mock
 
-        self.cf_lib_wrapper.create_a_zone = MagicMock(return_value={'id': 'ZONE INFO ID'})
+        self.cf_lib_wrapper.create_zone = MagicMock(return_value={'id': 'ZONE INFO ID'})
         bulk_dns.cli(['--add-new-domains', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
         self.assertEqual(30, len(responses))
 

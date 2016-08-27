@@ -28,7 +28,7 @@ def configured(f):
 
 def add_new_domain(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
     try:
-        zone_info = cf_lib_wrapper.create_a_zone(domain_name)
+        zone_info = cf_lib_wrapper.create_zone(domain_name)
         if domain_added_cb is not None and hasattr(domain_added_cb, '__call__'):
             domain_added_cb(succeed=True, response=zone_info)
     except CloudFlareAPIError as e:
