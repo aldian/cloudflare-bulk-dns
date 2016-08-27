@@ -2,6 +2,7 @@ from cStringIO import StringIO
 import os
 import re
 import sys
+import csv
 import unittest
 try:
     from unittest.mock import MagicMock
@@ -68,19 +69,35 @@ class TestBulkDns(unittest.TestCase):
 
         add_new_domain_real = bulk_dns.add_new_domain
         bulk_dns.add_new_domain = add_new_domain_mock
-
         self.cf_lib_wrapper.create_zone = MagicMock(return_value={'id': 'ZONE INFO ID'})
         old_stdout = sys.stdout
         sys.stdout = my_stdout = StringIO()
         bulk_dns.cli(['--add-new-domains', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
         sys.stdout = old_stdout
+        bulk_dns.add_new_domain = add_new_domain_real
+
         self.assertEqual(30, len(responses))
         match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
         csv_file_name = match.group(1)
         self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('name', row[0])
+                    self.assertEqual('status', row[1])
+                    self.assertEqual('id', row[2])
+                    self.assertEqual('type', row[3])
+                    self.assertEqual('created_on', row[4])
+                else:
+                    self.assertEqual(row[0], responses[row_number - 1]['name'])
+                    self.assertEqual(row[1], responses[row_number - 1]['status'])
+                    self.assertEqual(row[2], responses[row_number - 1]['id'])
+                    self.assertEqual(row[3], responses[row_number - 1]['type'])
+                    self.assertEqual(row[4], responses[row_number - 1]['created_on'])
+                row_number += 1
         os.remove(csv_file_name)
-
-        bulk_dns.add_new_domain = add_new_domain_real
 
     def test_cli_delete_all_records(self):
         bulk_dns.cli(['--delete-all-records', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
