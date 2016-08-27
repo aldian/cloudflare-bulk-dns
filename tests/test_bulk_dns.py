@@ -4,6 +4,10 @@ import re
 import sys
 import csv
 import unittest
+from test.test_support import EnvironmentVarGuard
+
+from CloudFlare.exceptions import CloudFlareAPIError
+
 try:
     from unittest.mock import MagicMock
 except ImportError:
@@ -19,23 +23,83 @@ class TestBulkDns(unittest.TestCase):
     def tearDown(self):
         pass
 
-    def test_add_new_domain(self):
+    def test_environment_api_key_not_set_error(self):
+        def real_func():
+            self.fail()
+        try:
+            bulk_dns.configured(real_func)()
+            self.fail()
+        except ValueError:
+            pass
+
+    def test_environment_email_key_not_set_error(self):
+        def real_func():
+            self.fail()
+        env = EnvironmentVarGuard()
+        env.set('CLOUDFLARE_API_KEY', 'hello key')
+        with env:
+            try:
+                bulk_dns.configured(real_func)()
+                self.fail()
+            except ValueError:
+                pass
+
+    def test_environment_completely_set_and_real_func_called(self):
+        def real_func(cf_lib_wrapper=None):
+            self.assertIsNotNone(cf_lib_wrapper)
+            self.assertEqual('hello key', cf_lib_wrapper.api_key)
+            self.assertEqual('hello email', cf_lib_wrapper.api_email)
+
+        env = EnvironmentVarGuard()
+        env.set('CLOUDFLARE_API_KEY', 'hello key')
+        env.set('CLOUDFLARE_API_EMAIL', 'hello email')
+        with env:
+            bulk_dns.configured(real_func)()
+
+    def test_add_new_domain_succeed(self):
+        domain_name = 'add-purer-happen.host'
         responses = []
 
         def domain_added_cb(**kwargs):
             self.assertTrue(kwargs['succeed'])
             response = kwargs['response']
-            responses.append(response)
             self.assertEqual('ZONE INFO ID', response['id'])
+            self.assertEqual(domain_name, response['name'])
+            responses.append(response)
 
-        domain_name = 'add-purer-happen.host'
         self.cf_lib_wrapper.create_zone = MagicMock(return_value={'id': 'ZONE INFO ID', 'name': domain_name})
         bulk_dns.add_new_domain(
             domain_name, domain_added_cb=domain_added_cb,
             cf_lib_wrapper=self.cf_lib_wrapper)
         self.assertEqual(1, len(responses))
 
-    def test_cli_add_new_domains(self):
+    def test_add_new_domain_failed_already_exists(self):
+        domain_name = 'add-purer-happen.host'
+        responses = []
+
+        def domain_added_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual(domain_name, response['name'])
+            responses.append(response)
+            exception = kwargs['exception']
+            self.assertTrue(isinstance(exception, CloudFlareAPIError))
+
+        self.cf_lib_wrapper.create_zone = MagicMock(side_effect=CloudFlareAPIError(code=-1, message='already exists'))
+        bulk_dns.add_new_domain(domain_name, domain_added_cb=domain_added_cb, cf_lib_wrapper=self.cf_lib_wrapper)
+        self.assertEqual(1, len(responses))
+
+    def test_add_new_domain_failed_other(self):
+        domain_name = 'add-purer-happen.host'
+
+        self.cf_lib_wrapper.create_zone = MagicMock(side_effect=CloudFlareAPIError(code=-1, message='other'))
+        try:
+            bulk_dns.add_new_domain(domain_name, cf_lib_wrapper=self.cf_lib_wrapper)
+            self.fail("Add new domain should fail and never reach this line")
+        except CloudFlareAPIError as e:
+            pass
+
+    def test_cli_add_new_domains_succeed(self):
         responses = []
 
         def add_new_domain_mock(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
@@ -99,8 +163,22 @@ class TestBulkDns(unittest.TestCase):
                 row_number += 1
         os.remove(csv_file_name)
 
+    def test_cli_add_new_domains_failed(self):
+        self.cf_lib_wrapper.create_zone = MagicMock(side_effect=CloudFlareAPIError(code=-1, message='already exists'))
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+        bulk_dns.cli(['--add-new-domains', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
+        sys.stdout = old_stdout
+
     def test_cli_delete_all_records(self):
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
         bulk_dns.cli(['--delete-all-records', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
+        sys.stdout = old_stdout
+        match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
+        csv_file_name = match.group(1)
+        self.assertTrue(os.path.isfile(csv_file_name))
+        os.remove(csv_file_name)
 
 if __name__ == '__main__':
     unittest.main()

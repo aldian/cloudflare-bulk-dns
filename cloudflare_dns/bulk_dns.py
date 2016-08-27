@@ -68,6 +68,12 @@ def cli(args, cf_lib_wrapper=None):
                     counter += 1
                 print("Added {0} new domains.".format(counter))
             print("CSV file {0} generated.".format(csv_name))
+    elif cmd == '--delete-all-records':
+        csv_name = "cf_dns_delete_all_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        with open(csv_name, "wb") as csv_file:
+            writer = csv.writer(csv_file)
+        print("CSV file {0} generated.".format(csv_name))
 
 if __name__ == "__main__":
     cli(sys.argv[1:])
