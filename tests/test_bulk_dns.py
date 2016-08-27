@@ -164,11 +164,47 @@ class TestBulkDns(unittest.TestCase):
         os.remove(csv_file_name)
 
     def test_cli_add_new_domains_failed(self):
+        responses = []
+
+        def add_new_domain_mock(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
+            try:
+                zone_info = cf_lib_wrapper.create_zone(domain_name)
+                if domain_added_cb is not None and hasattr(domain_added_cb, '__call__'):
+                    domain_added_cb(succeed=True, response=zone_info)
+            except CloudFlareAPIError as e:
+                if "already exists" not in e.message:
+                    raise e
+                if domain_added_cb is not None and hasattr(domain_added_cb, '__call__'):
+                    response = {'name': domain_name}
+                    responses.append(response)
+                    domain_added_cb(succeed=False, response=response, exception=e)
+
+        add_new_domain_real = bulk_dns.add_new_domain
+        bulk_dns.add_new_domain = add_new_domain_mock
         self.cf_lib_wrapper.create_zone = MagicMock(side_effect=CloudFlareAPIError(code=-1, message='already exists'))
         old_stdout = sys.stdout
         sys.stdout = my_stdout = StringIO()
         bulk_dns.cli(['--add-new-domains', '../example-domains.txt'], cf_lib_wrapper=self.cf_lib_wrapper)
         sys.stdout = old_stdout
+        bulk_dns.add_new_domain = add_new_domain_real
+        match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
+        csv_file_name = match.group(1)
+        self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('name', row[0])
+                    self.assertEqual('status', row[1])
+                    self.assertEqual('id', row[2])
+                    self.assertEqual('type', row[3])
+                    self.assertEqual('created_on', row[4])
+                else:
+                    self.assertEqual(row[0], responses[row_number - 1]['name'])
+                    self.assertEqual(row[1], 'failed')
+                row_number += 1
+        os.remove(csv_file_name)
 
     def test_cli_delete_all_records(self):
         old_stdout = sys.stdout
