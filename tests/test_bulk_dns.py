@@ -26,17 +26,21 @@ class TestBulkDns(unittest.TestCase):
     def test_environment_api_key_not_set_error(self):
         def real_func():
             self.fail()
-        try:
-            bulk_dns.configured(real_func)()
-            self.fail()
-        except ValueError:
-            pass
+        env = EnvironmentVarGuard()
+        env.unset('CLOUDFLARE_API_KEY')
+        with env:
+            try:
+                bulk_dns.configured(real_func)()
+                self.fail()
+            except ValueError:
+                pass
 
     def test_environment_email_key_not_set_error(self):
         def real_func():
             self.fail()
         env = EnvironmentVarGuard()
         env.set('CLOUDFLARE_API_KEY', 'hello key')
+        env.unset('CLOUDFLARE_API_EMAIL')
         with env:
             try:
                 bulk_dns.configured(real_func)()

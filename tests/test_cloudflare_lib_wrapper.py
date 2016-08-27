@@ -24,7 +24,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
     def tearDown(self):
         pass
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_list_zones(self):
         domain_name = 'answer-educate.download'
         # make sure zone didn't exist before creating it
@@ -57,7 +57,40 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
         self.assertTrue(zone_info['id'] in zone_info_ids)
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    def test_list_pending_zones(self):
+        domain_name = 'answer-educate.download'
+        # make sure zone didn't exist before creating it
+        try:
+            self.lib_wrapper.delete_zone_by_name(domain_name)
+        except:
+            pass
+        zone_info = self.lib_wrapper.create_zone(domain_name)
+
+        zone_info_ids = set()
+        idx = 1
+        page = 1
+        while True:
+            zone_info_list = self.lib_wrapper.list_zones(page=page, per_page=20, status='pending')
+
+            print("PAGE:", page, file=sys.stderr)
+            for zone_info in zone_info_list:
+                zone_info_ids.add(zone_info['id'])
+                print(idx, "ZONE INFO ID:", zone_info['id'], file=sys.stderr)
+                print(idx, "ZONE INFO NAME:", zone_info['name'], file=sys.stderr)
+                print(idx, "ZONE INFO STATUS:", zone_info['status'], file=sys.stderr)
+                idx += 1
+
+            if len(zone_info_list) < 20:
+                break
+
+            self.assertEqual(20, len(zone_info_list))
+
+            page += 1
+
+        self.assertTrue(zone_info['id'] in zone_info_ids)
+
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_get_zone_info(self):
         domain_name = 'answer-educate.download'
 
@@ -72,7 +105,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
         self.assertTrue('id' in zone_info)
         print("GET ZONE INFO:", zone_info, file=sys.stderr)
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_create_zone(self):
         domain_name = 'answer-educate.download'
 
@@ -95,7 +128,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
             if "already exists" not in e.message:
                 raise e
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_delete_zone(self):
         domain_name = 'answer-educate.download'
 
@@ -111,7 +144,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
             print("DELETED ZONE INFO:", zone_info, file=sys.stderr)
             self.assertTrue('id' in zone_info)
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_list_dns_records(self):
         domain_name = 'answer-educate.download'
         # make sure zone existed before getting its info
@@ -142,7 +175,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
         self.assertTrue(record_info['id'] in dns_record_ids)
         self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_create_dns_record(self):
         domain_name = 'answer-educate.download'
         # make sure zone existed before getting its info
@@ -158,7 +191,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
         self.assertTrue('id' in record_info)
         self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
 
-    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_delete_dns_record(self):
         domain_name = 'answer-educate.download'
         # make sure zone existed before getting its info
