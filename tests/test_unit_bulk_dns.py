@@ -539,5 +539,83 @@ class TestBulkDns(unittest.TestCase):
             self.assertEqual(31, row_number)
         os.remove(csv_file_name)
 
+    def test_edit_record_succeed(self):
+        domain_name = 'add-purer-happen.host'
+        dns_records = []
+        for i in range(1, 21):
+            dns_records.append({
+                'id': 'DNS RECORD ID {0}'.format(i),
+                'type': 'TXT', 'name': 'foo{0}.{1}'.format(i, domain_name),
+                'content': 'bar{0}'.format(i),
+            })
+        dns_records.append({
+            'id': 'DNS RECORD ID 345',
+            'type': 'TXT', 'name': 'foo.{0}'.format(domain_name),
+            'content': 'bar',
+        })
+        dns_records_page_1 = dns_records[:20]
+        dns_records_page_2 = dns_records[20:40]
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            self.assertEqual("new bar", response['content'])
+            responses.append(response)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.update_dns_record = MagicMock(
+            return_value={
+                'id': 'DNS RECORD ID 345',
+                'type': 'TXT', 'name': 'foo.{0}'.format(domain_name),
+                'content': 'new bar',
+            })
+        self.cf_lib_wrapper.list_dns_records = MagicMock(side_effect=[dns_records_page_1, dns_records_page_2])
+
+        bulk_dns.edit_record(
+            domain_name, "TXT", "foo", "bar", "new bar", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_cli_edit_records_succeed(self):
+        def edit_record_mock(
+                domain_name, record_type, record_name, old_record_content, new_record_content, record_edited_cb=None,
+                cf_lib_wrapper=None):
+            record_edited_cb(succeed=True, response={'id': 'DNS RECORD ID'})
+
+        edit_record_original = bulk_dns.edit_record
+        bulk_dns.edit_record = MagicMock(side_effect=edit_record_mock)
+
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli(
+            ['--edit-records', '--type', 'TXT', '--name', 'foo', '--old-content', 'bar', '--new-content', 'barbarian',
+             '../example-domains.txt'],
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+        bulk_dns.edit_record = edit_record_original
+
+        match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
+        csv_file_name = match.group(1)
+        self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('zone name', row[0])
+                    self.assertEqual('status', row[1])
+                    self.assertEqual('record id', row[2])
+                else:
+                    self.assertEqual(row[1], 'edited')
+                    self.assertEqual(row[2], 'DNS RECORD ID')
+                row_number += 1
+            self.assertEqual(31, row_number)
+        os.remove(csv_file_name)
+
 if __name__ == '__main__':
     unittest.main()

@@ -71,3 +71,31 @@ class CloudFlareLibWrapper(object):
         """
         return self.cf.zones.dns_records.delete(
             zone_id, record_id)
+
+    def update_dns_record(self, zone_id, record_id, record_type, record_name, content):
+        """ Updating a DNS record
+
+        :param zone_id: The zone identifier
+        :param record_id: The record identifier
+        :param record_type: The record type
+        :param record_name: The record name
+        :param content: The record content
+        :return: a dictionary for example
+        {
+            "id": "372e67954025e0ba6aaa6d586b9e0b59",
+            "type": "A",
+            "name": "example.com",
+            "content": "1.2.3.4",
+            "proxiable": true,
+            "proxied": false,
+            "ttl": 120,
+            "locked": false,
+            "zone_id": "023e105f4ecef8ad9ca31a8372d0c353",
+            "zone_name": "example.com",
+            "created_on": "2014-01-01T05:20:00.12345Z",
+            "modified_on": "2014-01-01T05:20:00.12345Z",
+            "data": {}
+          }
+        """
+        return self.cf.zones.dns_records.put(
+            zone_id, record_id, data={'name': record_name, 'type': record_type, 'content': content})

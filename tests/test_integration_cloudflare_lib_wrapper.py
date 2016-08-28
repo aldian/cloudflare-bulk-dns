@@ -2,6 +2,7 @@ from __future__ import print_function
 import os
 import sys
 import unittest
+import uuid
 
 from CloudFlare.exceptions import CloudFlareAPIError
 
@@ -206,6 +207,44 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
         record_info = self.lib_wrapper.create_dns_record(zone_id, "TXT", "bar", "foo")
         deleted_record_info = self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
         self.assertEqual(record_info['id'], deleted_record_info['id'])
+
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    def test_update_record(self):
+        domain_name = 'add-purer-happen.host'
+        # make sure zone existed before getting its info
+        try:
+            zone_info = self.lib_wrapper.create_zone(domain_name)
+        except CloudFlareAPIError as e:
+            # get the zone info
+            zone_info = self.lib_wrapper.get_zone_info(domain_name)
+        zone_id = zone_info['id']
+
+        record_info = None
+        try:
+            record_info = self.lib_wrapper.create_dns_record(zone_id, "TXT", "bar", "foo")
+        except CloudFlareAPIError as e:
+            page = 1
+            while True:
+                dns_records = self.lib_wrapper.list_dns_records(zone_id, page=page, per_page=20)
+                for dns_record in dns_records:
+                    if dns_record['type'] == 'TXT' and dns_record['name'] == ('bar.' + domain_name) \
+                            and dns_record['content'] == 'foo':
+                        record_info = dns_record
+                        break
+                if (record_info is not None) or (len(dns_records) < 20):
+                    break
+                page += 1
+            pass
+
+        self.assertIsNotNone(record_info)
+        new_content = str(uuid.uuid4())
+        record_info = self.lib_wrapper.update_dns_record(
+            zone_id, record_info['id'], "TXT", "bar", new_content)
+        self.assertTrue('id' in record_info)
+        self.assertEqual("bar." + domain_name, record_info['name'])
+        self.assertEqual(new_content, record_info['content'])
+
+        self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
 
 
 if __name__ == '__main__':
