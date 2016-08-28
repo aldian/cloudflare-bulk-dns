@@ -41,6 +41,9 @@ def add_new_domain(domain_name, domain_added_cb=None, cf_lib_wrapper=None):
 
 def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None):
     zone_info = cf_lib_wrapper.get_zone_info(domain_name)
+    if zone_info is None:
+        record_deleted_cb(succeed=False, exception=ValueError('zone_info is None'))
+        return
     page = 1
     while True:
         dns_records = cf_lib_wrapper.list_dns_records(zone_info['id'], page=page, per_page=20)
@@ -54,6 +57,9 @@ def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None)
 
 def add_new_record(domain_name, record_type, record_name, record_content, record_added_cb=None, cf_lib_wrapper=None):
     zone_info = cf_lib_wrapper.get_zone_info(domain_name)
+    if zone_info is None:
+        record_added_cb(succeed=False, exception=ValueError('zone_info is None'))
+        return
     try:
         record_info = cf_lib_wrapper.create_dns_record(zone_info['id'], record_type, record_name, record_content)
         record_added_cb(succeed=True, response=record_info)
@@ -63,6 +69,9 @@ def add_new_record(domain_name, record_type, record_name, record_content, record
 
 def list_records(domain_name, record_listed_cb=None, cf_lib_wrapper=None):
     zone_info = cf_lib_wrapper.get_zone_info(domain_name)
+    if zone_info is None:
+        record_listed_cb(succeed=False, exception=ValueError('zone_info is None'))
+        return
     page = 1
     while True:
         dns_records = cf_lib_wrapper.list_dns_records(zone_info['id'], page=page, per_page=20)
