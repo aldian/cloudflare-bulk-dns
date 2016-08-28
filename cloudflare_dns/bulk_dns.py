@@ -1,5 +1,4 @@
 from __future__ import print_function
-from cloudflare_dns import CloudFlareLibWrapper
 import os
 import sys
 import datetime
@@ -8,6 +7,7 @@ import csv
 import getopt
 from CloudFlare.exceptions import CloudFlareAPIError
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from cloudflare_dns import CloudFlareLibWrapper
 
 
 def configured(f):
