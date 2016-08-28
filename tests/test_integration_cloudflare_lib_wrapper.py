@@ -26,7 +26,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_list_zones(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
         # make sure zone didn't exist before creating it
         try:
             self.lib_wrapper.delete_zone_by_name(domain_name)
@@ -59,7 +59,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_list_pending_zones(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
         # make sure zone didn't exist before creating it
         try:
             self.lib_wrapper.delete_zone_by_name(domain_name)
@@ -92,7 +92,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_get_zone_info(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
 
         # make sure zone existed before getting its info
         try:
@@ -107,7 +107,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_create_zone(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
 
         # make sure zone didn't exist before creating it
         try:
@@ -130,7 +130,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_delete_zone(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
 
         # make sure zone existed before deleting it
         try:
@@ -146,7 +146,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_list_dns_records(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
         # make sure zone existed before getting its info
         try:
             self.lib_wrapper.create_zone(domain_name)
@@ -177,7 +177,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_create_dns_record(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
         # make sure zone existed before getting its info
         try:
             self.lib_wrapper.create_zone(domain_name)
@@ -193,7 +193,7 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_delete_dns_record(self):
-        domain_name = 'answer-educate.download'
+        domain_name = 'add-purer-happen.host'
         # make sure zone existed before getting its info
         try:
             self.lib_wrapper.create_zone(domain_name)
