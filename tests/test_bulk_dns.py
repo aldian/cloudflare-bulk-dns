@@ -333,5 +333,15 @@ class TestBulkDns(unittest.TestCase):
             self.assertEqual(31, row_number)
         os.remove(csv_file_name)
 
+    def test_cli_add_new_records_succeed(self):
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli(
+            ['--add-new-records', '--type', 'TXT', '--name', 'foo', '--content', 'bar', '../example-domains.txt'],
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+
 if __name__ == '__main__':
     unittest.main()

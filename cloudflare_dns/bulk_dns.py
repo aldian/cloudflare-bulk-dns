@@ -1,4 +1,5 @@
 from __future__ import print_function
+from cloudflare_dns import CloudFlareLibWrapper
 import os
 import sys
 import datetime
@@ -7,7 +8,6 @@ import csv
 import getopt
 from CloudFlare.exceptions import CloudFlareAPIError
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from cloudflare_dns import CloudFlareLibWrapper
 
 
 def configured(f):
@@ -69,11 +69,19 @@ def cli(args, cf_lib_wrapper=None):
         return
 
     cmd = None
+    record_type = None
+    record_name = None
+    record_content = None
     for opt, arg in opts:
         if opt in ('--add-new-domains', '--delete-all-records', '--add-new-records'):
             cmd = opt
         else:
-            pass
+            if opt == '--type':
+                record_type = arg
+            elif opt == '--name':
+                record_name = arg
+            elif opt == '--content':
+                record_content = arg
 
     if cmd is None or len(args) < 1:
         print(usage_str)
@@ -134,6 +142,8 @@ def cli(args, cf_lib_wrapper=None):
                     counter += 1
                 print("Deleted {0} records.".format(counter))
         print("CSV file {0} generated.".format(csv_name))
+    elif cmd == '--add-new-records':
+        pass
 
 if __name__ == "__main__":
     cli(sys.argv[1:])
