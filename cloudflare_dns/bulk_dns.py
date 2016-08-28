@@ -130,9 +130,14 @@ def cli_delete_all_records(domains_file_name, cf_lib_wrapper):
                     output_text = "deleted [{0}]: record {1} of {2}".format(counter + 1, response['id'], zone_name)
                     writer.writerow([zone_name, response['id'], 'deleted'])
                 else:
-                    output_text = "failed [{0}]: while deleting record {1} of {2}".format(
-                        counter + 1, response['id'], zone_name)
-                    writer.writerow([zone_name, response['id'], 'failed'])
+                    if response is None:
+                        output_text = "failed [{0}]: {1} while deleting records of {2}".format(
+                            counter + 1, exception.message, zone_name)
+                        writer.writerow([zone_name, '', exception.message])
+                    else:
+                        output_text = "failed [{0}]: while deleting record {1} of {2}".format(
+                            counter + 1, response['id'], zone_name)
+                        writer.writerow([zone_name, response['id'], 'failed'])
                 print(output_text)
             return record_deleted_cb
 
