@@ -53,7 +53,7 @@ def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None)
 
 
 def add_new_records(domain_name, record_added_cb=None, cf_lib_wrapper=None):
-    pass
+    zone_info = cf_lib_wrapper.get_zone_info(domain_name)
 
 
 usage_str = ('Usage:'

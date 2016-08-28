@@ -247,6 +247,31 @@ class TestBulkDns(unittest.TestCase):
 
     def test_delete_all_records_succeed(self):
         domain_name = 'add-purer-happen.host'
+        records =[
+            {'id': 'DNS RECORD ID 1'},
+            {'id': 'DNS RECORD ID 2'},
+            {'id': 'DNS RECORD ID 3'},
+            {'id': 'DNS RECORD ID 4'},
+            {'id': 'DNS RECORD ID 5'},
+            {'id': 'DNS RECORD ID 6'},
+            {'id': 'DNS RECORD ID 7'},
+            {'id': 'DNS RECORD ID 8'},
+            {'id': 'DNS RECORD ID 9'},
+            {'id': 'DNS RECORD ID 10'},
+            {'id': 'DNS RECORD ID 11'},
+            {'id': 'DNS RECORD ID 12'},
+            {'id': 'DNS RECORD ID 13'},
+            {'id': 'DNS RECORD ID 14'},
+            {'id': 'DNS RECORD ID 15'},
+            {'id': 'DNS RECORD ID 16'},
+            {'id': 'DNS RECORD ID 17'},
+            {'id': 'DNS RECORD ID 18'},
+            {'id': 'DNS RECORD ID 19'},
+            {'id': 'DNS RECORD ID 20'},
+            {'id': 'DNS RECORD ID 21'},
+        ]
+        records_page_1 = records[:20]
+        records_page_2 = records[20:40]
         responses = []
 
         def record_deleted_cb(**kwargs):
@@ -257,15 +282,15 @@ class TestBulkDns(unittest.TestCase):
 
         self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
         self.cf_lib_wrapper.list_dns_records = MagicMock(
-            return_value=[{'id': 'DNS RECORD ID 1'}, {'id': 'DNS RECORD ID 2'}])
+            side_effect=[records_page_1, records_page_2])
         self.cf_lib_wrapper.delete_dns_record = MagicMock(
-            side_effect=[{'id': 'DNS RECORD ID 1'}, {'id': 'DNS RECORD ID 2'}])
+            side_effect=records)
 
         bulk_dns.delete_all_records(
             domain_name, record_deleted_cb=record_deleted_cb,
             cf_lib_wrapper=self.cf_lib_wrapper)
 
-        self.assertEqual(2, len(responses))
+        self.assertEqual(21, len(responses))
 
     def test_cli_delete_all_records_succeed(self):
         def delete_all_records_mock(domain_name, record_deleted_cb=None, cf_lib_wrapper=None):
@@ -333,7 +358,15 @@ class TestBulkDns(unittest.TestCase):
             self.assertEqual(31, row_number)
         os.remove(csv_file_name)
 
+    def test_add_new_records_succeed(self):
+        pass
+
     def test_cli_add_new_records_succeed(self):
+        def add_new_records_mock(domain_name, record_added_cb=None, cf_lib_wrapper=None):
+            record_added_cb(succeed=True, response={'id': 'DNS RECORD ID'})
+
+        add_new_records_original = bulk_dns.add_new_records
+        bulk_dns.add_new_records = MagicMock(side_effect=add_new_records_mock)
         old_stdout = sys.stdout
         sys.stdout = my_stdout = StringIO()
 
@@ -342,6 +375,8 @@ class TestBulkDns(unittest.TestCase):
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         sys.stdout = old_stdout
+        bulk_dns.add_new_records = add_new_records_original
+
         match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
         csv_file_name = match.group(1)
         self.assertTrue(os.path.isfile(csv_file_name))
