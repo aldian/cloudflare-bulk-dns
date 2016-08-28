@@ -2,8 +2,9 @@ from __future__ import print_function
 import os
 import sys
 import datetime
-import csv
 from functools import wraps
+import csv
+import getopt
 from CloudFlare.exceptions import CloudFlareAPIError
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from cloudflare_dns import CloudFlareLibWrapper
@@ -52,10 +53,41 @@ def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None)
 
 @configured
 def cli(args, cf_lib_wrapper=None):
+    usage = ('usage:'
+             '\ncloudflare_dns/bulk_dns.py --add-new-domain <domain_list_file>' +
+             '\ncloudflare_dns/bulk_dns.py --delete-all-records <domain_list_file>' +
+             '\ncloudflare_dns/bulk_dns.py --add-new-records --type <record_type> --name <record_name> --content <record_content> <domain_list_file>')
+
+    try:
+        opts, args = getopt.getopt(args,
+                                   '',
+                                   [
+                                       'add-new-domains', 'delete-all-records', 'add-new-records',
+                                       'type=', 'name=', 'content='
+                                   ])
+    except getopt.GetoptError:
+        exit(usage)
+
+    cmd = None
+    i = 0
+    for opt, arg in opts:
+        if i == 0:
+            if opt in ('--add-new-domains', '--delete-all-records', '--add-new-records'):
+                cmd = opt
+            else:
+                exit(usage)
+        else:
+            pass
+        i += 1
+
+    if cmd is None or len(args) < 1:
+        exit(usage)
+
+    domains_file_name = args[0]
+
     counter = 0
     dt = datetime.datetime.now()
 
-    cmd = args[0]
     if cmd == '--add-new-domains':
         csv_name = "cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
                 dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
@@ -72,7 +104,6 @@ def cli(args, cf_lib_wrapper=None):
                     writer.writerow([response['name'], 'failed'])
                 print(output_text)
 
-            domains_file_name = args[1]
             with open(domains_file_name) as f:
                 print("Adding domains listed in {0}:".format(domains_file_name))
                 for line in f:
@@ -99,7 +130,6 @@ def cli(args, cf_lib_wrapper=None):
                     print(output_text)
                 return record_deleted_cb
 
-            domains_file_name = args[1]
             with open(domains_file_name) as f:
                 print("Deleting records from zones listed in {0}:".format(domains_file_name))
                 for line in f:
