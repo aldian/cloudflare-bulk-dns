@@ -57,6 +57,87 @@ usage_str = ('Usage:'
              '\ncloudflare_dns/bulk_dns.py --add-new-records --type <record_type> --name <record_name> --content <record_content> <domain_list_file>')
 
 
+def cli_add_new_domains(domains_file_name, cf_lib_wrapper):
+    counter = 0
+    dt = datetime.datetime.now()
+    csv_name = "cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    with open(csv_name, "wb") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['name', 'status', 'id', 'type', 'created_on'])
+
+        def domain_added_cb(succeed=None, response=None, exception=None):
+            if succeed:
+                output_text = "added [{0}]: {1}".format(counter + 1, response['name'])
+                writer.writerow([response['name'], response['status'], response['id'], response['type'], response['created_on']])
+            else:
+                output_text = "failed [{0}]: {1}".format(counter + 1, exception.message)
+                writer.writerow([response['name'], 'failed'])
+            print(output_text)
+
+        with open(domains_file_name) as f:
+            print("Adding domains listed in {0}:".format(domains_file_name))
+            for line in f:
+                add_new_domain(line.strip(), domain_added_cb=domain_added_cb, cf_lib_wrapper=cf_lib_wrapper)
+                counter += 1
+            print("Added {0} new domains.".format(counter))
+        print("CSV file {0} generated.".format(csv_name))
+
+
+def cli_delete_all_records(domains_file_name, cf_lib_wrapper):
+    counter = 0
+    dt = datetime.datetime.now()
+    csv_name = "cf_dns_delete_all_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    with open(csv_name, "wb") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['zone name', 'record id', 'status'])
+
+        def record_deleted_cb_wrapper(zone_name):
+            def record_deleted_cb(succeed=None, response=None, exception=None):
+                if succeed:
+                    output_text = "deleted [{0}]: record {1} of {2}".format(counter + 1, response['id'], zone_name)
+                    writer.writerow([zone_name, response['id'], 'deleted'])
+                else:
+                    output_text = "failed [{0}]: while deleting record {1} of {2}".format(
+                        counter + 1, response['id'], zone_name)
+                    writer.writerow([zone_name, response['id'], 'failed'])
+                print(output_text)
+            return record_deleted_cb
+
+        with open(domains_file_name) as f:
+            print("Deleting records from zones listed in {0}:".format(domains_file_name))
+            for line in f:
+                zone_name = line.strip()
+                delete_all_records(zone_name, record_deleted_cb=record_deleted_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                counter += 1
+            print("Deleted {0} records.".format(counter))
+    print("CSV file {0} generated.".format(csv_name))
+
+
+def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_name, record_content):
+    counter = 0
+    dt = datetime.datetime.now()
+    csv_name = "cf_dns_add_new_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    with open(csv_name, "wb") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['zone name', 'record id', 'status'])
+
+        def record_added_cb_wrapper(zone_name):
+            def record_added_cb(succeed=None, response=None, exception=None):
+                if succeed:
+                    output_text = "added [{0}]: record {1} of {2}".format(counter + 1, response['id'], zone_name)
+                    writer.writerow([zone_name, response['id'], 'added'])
+                else:
+                    output_text = "failed [{0}]: while adding record {1} of {2}".format(
+                        counter + 1, response['id'], zone_name)
+                    writer.writerow([zone_name, response['id'], 'failed'])
+                print(output_text)
+            return record_added_cb
+    print("CSV file {0} generated.".format(csv_name))
+
+
 @configured
 def cli(args, cf_lib_wrapper=None):
     try:
@@ -89,66 +170,13 @@ def cli(args, cf_lib_wrapper=None):
 
     domains_file_name = args[0]
 
-    counter = 0
-    dt = datetime.datetime.now()
-
     if cmd == '--add-new-domains':
-        csv_name = "cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
-                dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-        with open(csv_name, "wb") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(['name', 'status', 'id', 'type', 'created_on'])
-
-            def domain_added_cb(succeed=None, response=None, exception=None):
-                if succeed:
-                    output_text = "added [{0}]: {1}".format(counter + 1, response['name'])
-                    writer.writerow([response['name'], response['status'], response['id'], response['type'], response['created_on']])
-                else:
-                    output_text = "failed [{0}]: {1}".format(counter + 1, exception.message)
-                    writer.writerow([response['name'], 'failed'])
-                print(output_text)
-
-            with open(domains_file_name) as f:
-                print("Adding domains listed in {0}:".format(domains_file_name))
-                for line in f:
-                    add_new_domain(line.strip(), domain_added_cb=domain_added_cb, cf_lib_wrapper=cf_lib_wrapper)
-                    counter += 1
-                print("Added {0} new domains.".format(counter))
-            print("CSV file {0} generated.".format(csv_name))
+        cli_add_new_domains(domains_file_name, cf_lib_wrapper)
     elif cmd == '--delete-all-records':
-        csv_name = "cf_dns_delete_all_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-        with open(csv_name, "wb") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(['zone name', 'record id', 'status'])
-
-            def record_deleted_cb_wrapper(zone_name):
-                def record_deleted_cb(succeed=None, response=None, exception=None):
-                    if succeed:
-                        output_text = "deleted [{0}]: record {1} of {2}".format(counter + 1, response['id'], zone_name)
-                        writer.writerow([zone_name, response['id'], 'deleted'])
-                    else:
-                        output_text = "failed [{0}]: while deleting record {1} of {2}".format(
-                            counter + 1, response['id'], zone_name)
-                        writer.writerow([zone_name, response['id'], 'failed'])
-                    print(output_text)
-                return record_deleted_cb
-
-            with open(domains_file_name) as f:
-                print("Deleting records from zones listed in {0}:".format(domains_file_name))
-                for line in f:
-                    zone_name = line.strip()
-                    delete_all_records(zone_name, record_deleted_cb=record_deleted_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
-                    counter += 1
-                print("Deleted {0} records.".format(counter))
-        print("CSV file {0} generated.".format(csv_name))
+        cli_delete_all_records(domains_file_name, cf_lib_wrapper)
     elif cmd == '--add-new-records':
-        csv_name = "cf_dns_add_new_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
-        with open(csv_name, "wb") as csv_file:
-            writer = csv.writer(csv_file)
-            writer.writerow(['zone name', 'record id', 'status'])
-        print("CSV file {0} generated.".format(csv_name))
+        cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_name, record_content)
+
 
 if __name__ == "__main__":
     cli(sys.argv[1:])

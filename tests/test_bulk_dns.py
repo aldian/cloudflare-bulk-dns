@@ -345,6 +345,19 @@ class TestBulkDns(unittest.TestCase):
         match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
         csv_file_name = match.group(1)
         self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('zone name', row[0])
+                    self.assertEqual('record id', row[1])
+                    self.assertEqual('status', row[2])
+                else:
+                    self.assertEqual(row[1], 'DNS RECORD ID')
+                    self.assertEqual(row[2], 'added')
+                row_number += 1
+            self.assertEqual(31, row_number)
         os.remove(csv_file_name)
 
 if __name__ == '__main__':
