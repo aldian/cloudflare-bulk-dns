@@ -61,6 +61,18 @@ def add_new_record(domain_name, record_type, record_name, record_content, record
         record_added_cb(succeed=False, exception=e)
 
 
+def list_records(domain_name, record_listed_cb=None, cf_lib_wrapper=None):
+    zone_info = cf_lib_wrapper.get_zone_info(domain_name)
+    page = 1
+    while True:
+        dns_records = cf_lib_wrapper.list_dns_records(zone_info['id'], page=page, per_page=20)
+        for dns_record in dns_records:
+            record_listed_cb(succeed=True, response=dns_record)
+        if len(dns_records) < 20:
+            break
+        page += 1
+
+
 usage_str = ('Usage:'
              '\ncloudflare_dns/bulk_dns.py --add-new-domain <domain_list_file>' +
              '\ncloudflare_dns/bulk_dns.py --delete-all-records <domain_list_file>' +
@@ -121,7 +133,7 @@ def cli_delete_all_records(domains_file_name, cf_lib_wrapper):
                 zone_name = line.strip()
                 delete_all_records(zone_name, record_deleted_cb=record_deleted_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
                 counter += 1
-            print("Deleted {0} records.".format(counter))
+            print("Deleted records from {0} zones.".format(counter))
     print("CSV file {0} generated.".format(csv_name))
 
 
@@ -156,23 +168,56 @@ def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_n
     print("CSV file {0} generated.".format(csv_name))
 
 
+def cli_list_records(domains_file_name, cf_lib_wrapper):
+    counter = 0
+    dt = datetime.datetime.now()
+    csv_name = "cf_list_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+    with open(csv_name, "wb") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(['zone name', 'record id', 'type', 'name', 'content'])
+
+        def record_listed_cb_wrapper(zone_name):
+            def record_listed_cb(succeed=None, response=None, exception=None):
+                if succeed:
+                    output_text = "{0}: record {1}. ID {2}. NAME {3}. CONTENT {4}".format(
+                        zone_name, response['type'], response['id'], response['name'], response['content'])
+                    writer.writerow(
+                        [zone_name, response['id'], response['type'], response['name'], response['content']])
+                else:
+                    output_text = "{0}: {1}".format(zone_name, exception.message)
+                    writer.writerow([zone_name, exception.message])
+                print(output_text)
+            return record_listed_cb
+
+        with open(domains_file_name) as f:
+            print("Listing DNS records from zones listed in {0}:".format(domains_file_name))
+            for line in f:
+                zone_name = line.strip()
+                list_records(zone_name, record_listed_cb=record_listed_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                counter += 1
+            print("Listed records from {0} zones.".format(counter))
+    print("CSV file {0} generated.".format(csv_name))
+
+
 @configured
 def cli(args, cf_lib_wrapper=None):
     try:
         opts, args = getopt.getopt(
             args, '', [
-                'add-new-domains', 'delete-all-records', 'add-new-records', 'type=', 'name=', 'content='
+                'add-new-domains', 'delete-all-records', 'add-new-records', 'list-records', 'type=', 'name=', 'content='
             ])
     except getopt.GetoptError:
         print(usage_str)
         return
 
+    cmd_set = {'--add-new-domains', '--delete-all-records', '--add-new-records', '--list-records'}
     cmd = None
     record_type = None
     record_name = None
     record_content = None
     for opt, arg in opts:
-        if opt in ('--add-new-domains', '--delete-all-records', '--add-new-records'):
+        if opt in cmd_set:
             cmd = opt
         else:
             if opt == '--type':
@@ -194,6 +239,8 @@ def cli(args, cf_lib_wrapper=None):
         cli_delete_all_records(domains_file_name, cf_lib_wrapper)
     elif cmd == '--add-new-records':
         cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_name, record_content)
+    elif cmd == '--list-records':
+        cli_list_records(domains_file_name, cf_lib_wrapper)
 
 
 if __name__ == "__main__":
