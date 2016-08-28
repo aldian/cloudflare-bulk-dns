@@ -49,6 +49,11 @@ def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None)
             record_deleted_cb(succeed=True, response=record_info)
         if len(dns_records) < 20:
             break
+        page += 1
+
+
+def add_new_records(domain_name, record_added_cb=None, cf_lib_wrapper=None):
+    pass
 
 
 usage_str = ('Usage:'
@@ -132,9 +137,20 @@ def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_n
                 else:
                     output_text = "failed [{0}]: while adding record {1} of {2}".format(
                         counter + 1, response['id'], zone_name)
-                    writer.writerow([zone_name, response['id'], 'failed'])
+                    if exception is None:
+                        writer.writerow([zone_name, response['id'], 'failed'])
+                    else:
+                        writer.writerow([zone_name, response['id'], 'failed: ' + exception.message])
                 print(output_text)
             return record_added_cb
+
+        with open(domains_file_name) as f:
+            print("Adding records to zones listed in {0}:".format(domains_file_name))
+            for line in f:
+                zone_name = line.strip()
+                add_new_records(zone_name, record_added_cb=record_added_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                counter += 1
+            print("Added {0} records.".format(counter))
     print("CSV file {0} generated.".format(csv_name))
 
 
