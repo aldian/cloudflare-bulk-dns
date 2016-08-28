@@ -52,8 +52,13 @@ def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None)
         page += 1
 
 
-def add_new_records(domain_name, record_added_cb=None, cf_lib_wrapper=None):
+def add_new_record(domain_name, record_type, record_name, record_content, record_added_cb=None, cf_lib_wrapper=None):
     zone_info = cf_lib_wrapper.get_zone_info(domain_name)
+    try:
+        record_info = cf_lib_wrapper.create_dns_record(zone_info['id'], record_type, record_name, record_content)
+        record_added_cb(succeed=True, response=record_info)
+    except CloudFlareAPIError as e:
+        record_added_cb(succeed=False, exception=e)
 
 
 usage_str = ('Usage:'
@@ -127,20 +132,17 @@ def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_n
         dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     with open(csv_name, "wb") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['zone name', 'record id', 'status'])
+        writer.writerow(['zone name', 'status', 'record id'])
 
         def record_added_cb_wrapper(zone_name):
             def record_added_cb(succeed=None, response=None, exception=None):
                 if succeed:
                     output_text = "added [{0}]: record {1} of {2}".format(counter + 1, response['id'], zone_name)
-                    writer.writerow([zone_name, response['id'], 'added'])
+                    writer.writerow([zone_name, 'added', response['id']])
                 else:
-                    output_text = "failed [{0}]: while adding record {1} of {2}".format(
-                        counter + 1, response['id'], zone_name)
-                    if exception is None:
-                        writer.writerow([zone_name, response['id'], 'failed'])
-                    else:
-                        writer.writerow([zone_name, response['id'], 'failed: ' + exception.message])
+                    output_text = "failed [{0}]: while adding new record to {1}".format(
+                        counter + 1, zone_name)
+                    writer.writerow([zone_name, 'failed: ' + exception.message])
                 print(output_text)
             return record_added_cb
 
@@ -148,7 +150,7 @@ def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_n
             print("Adding records to zones listed in {0}:".format(domains_file_name))
             for line in f:
                 zone_name = line.strip()
-                add_new_records(zone_name, record_added_cb=record_added_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                add_new_record(zone_name, record_type, record_name, record_content, record_added_cb=record_added_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
                 counter += 1
             print("Added {0} records.".format(counter))
     print("CSV file {0} generated.".format(csv_name))

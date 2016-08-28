@@ -358,15 +358,52 @@ class TestBulkDns(unittest.TestCase):
             self.assertEqual(31, row_number)
         os.remove(csv_file_name)
 
-    def test_add_new_records_succeed(self):
-        pass
+    def test_add_new_record_succeed(self):
+        responses = []
+
+        def record_added_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            responses.append(response)
+
+        domain_name = 'add-purer-happen.host'
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.create_dns_record = MagicMock(return_value={'id': 'DNS RECORD ID 345'})
+
+        bulk_dns.add_new_record(
+            domain_name, "TXT", "foo", "bar", record_added_cb=record_added_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_add_new_record_failed(self):
+        responses = []
+
+        def record_added_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            self.assertTrue(isinstance(exception, CloudFlareAPIError))
+            self.assertEqual("FAILED WHEN ADDING DNS RECORD BLAH", exception.message)
+            responses.append(exception)
+
+        domain_name = 'add-purer-happen.host'
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.create_dns_record = MagicMock(
+            side_effect=CloudFlareAPIError(code=-1, message="FAILED WHEN ADDING DNS RECORD BLAH"))
+
+        bulk_dns.add_new_record(
+            domain_name, "TXT", "foo", "bar", record_added_cb=record_added_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
 
     def test_cli_add_new_records_succeed(self):
-        def add_new_records_mock(domain_name, record_added_cb=None, cf_lib_wrapper=None):
+        def add_new_record_mock(domain_name, record_type, record_name, record_content, record_added_cb=None, cf_lib_wrapper=None):
             record_added_cb(succeed=True, response={'id': 'DNS RECORD ID'})
 
-        add_new_records_original = bulk_dns.add_new_records
-        bulk_dns.add_new_records = MagicMock(side_effect=add_new_records_mock)
+        add_new_record_original = bulk_dns.add_new_record
+        bulk_dns.add_new_record = MagicMock(side_effect=add_new_record_mock)
         old_stdout = sys.stdout
         sys.stdout = my_stdout = StringIO()
 
@@ -375,7 +412,7 @@ class TestBulkDns(unittest.TestCase):
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         sys.stdout = old_stdout
-        bulk_dns.add_new_records = add_new_records_original
+        bulk_dns.add_new_record = add_new_record_original
 
         match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
         csv_file_name = match.group(1)
@@ -386,11 +423,44 @@ class TestBulkDns(unittest.TestCase):
             for row in reader:
                 if row_number == 0:
                     self.assertEqual('zone name', row[0])
-                    self.assertEqual('record id', row[1])
-                    self.assertEqual('status', row[2])
+                    self.assertEqual('status', row[1])
+                    self.assertEqual('record id', row[2])
                 else:
-                    self.assertEqual(row[1], 'DNS RECORD ID')
-                    self.assertEqual(row[2], 'added')
+                    self.assertEqual(row[1], 'added')
+                    self.assertEqual(row[2], 'DNS RECORD ID')
+                row_number += 1
+            self.assertEqual(31, row_number)
+        os.remove(csv_file_name)
+
+    def test_cli_add_new_records_failed(self):
+        def add_new_record_mock(domain_name, record_type, record_name, record_content, record_added_cb=None, cf_lib_wrapper=None):
+            record_added_cb(succeed=False, exception=CloudFlareAPIError(code=-1, message="CLI ADD NEW RECORD FAILED"))
+
+        add_new_record_original = bulk_dns.add_new_record
+        bulk_dns.add_new_record = MagicMock(side_effect=add_new_record_mock)
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli(
+            ['--add-new-records', '--type', 'TXT', '--name', 'foo', '--content', 'bar', '../example-domains.txt'],
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+        bulk_dns.add_new_record = add_new_record_original
+
+        match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
+        csv_file_name = match.group(1)
+        self.assertTrue(os.path.isfile(csv_file_name))
+        with open(csv_file_name, "rb") as csv_file:
+            reader = csv.reader(csv_file)
+            row_number = 0
+            for row in reader:
+                if row_number == 0:
+                    self.assertEqual('zone name', row[0])
+                    self.assertEqual('status', row[1])
+                    self.assertEqual('record id', row[2])
+                else:
+                    self.assertEqual(row[1], 'failed: CLI ADD NEW RECORD FAILED')
                 row_number += 1
             self.assertEqual(31, row_number)
         os.remove(csv_file_name)
