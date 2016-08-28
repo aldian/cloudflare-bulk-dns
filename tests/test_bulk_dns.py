@@ -65,6 +65,36 @@ class TestBulkDns(unittest.TestCase):
         with env:
             bulk_dns.configured(real_func)()
 
+    def test_cli_getopt_invalid_option(self):
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli(['--abc'], cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+
+        self.assertEqual(bulk_dns.usage_str, my_stdout.getvalue().strip())
+
+    def test_cli_getopt_no_option(self):
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli([], cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+
+        self.assertEqual(bulk_dns.usage_str, my_stdout.getvalue().strip())
+
+    def test_cli_getopt_no_argument(self):
+        old_stdout = sys.stdout
+        sys.stdout = my_stdout = StringIO()
+
+        bulk_dns.cli(['--add-new-domains'], cf_lib_wrapper=self.cf_lib_wrapper)
+
+        sys.stdout = old_stdout
+
+        self.assertEqual(bulk_dns.usage_str, my_stdout.getvalue().strip())
+
     def test_add_new_domain_succeed(self):
         domain_name = 'add-purer-happen.host'
         responses = []

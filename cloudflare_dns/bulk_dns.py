@@ -51,37 +51,33 @@ def delete_all_records(domain_name, record_deleted_cb=None, cf_lib_wrapper=None)
             break
 
 
-@configured
-def cli(args, cf_lib_wrapper=None):
-    usage = ('usage:'
+usage_str = ('usage:'
              '\ncloudflare_dns/bulk_dns.py --add-new-domain <domain_list_file>' +
              '\ncloudflare_dns/bulk_dns.py --delete-all-records <domain_list_file>' +
              '\ncloudflare_dns/bulk_dns.py --add-new-records --type <record_type> --name <record_name> --content <record_content> <domain_list_file>')
 
+
+@configured
+def cli(args, cf_lib_wrapper=None):
     try:
-        opts, args = getopt.getopt(args,
-                                   '',
-                                   [
-                                       'add-new-domains', 'delete-all-records', 'add-new-records',
-                                       'type=', 'name=', 'content='
-                                   ])
+        opts, args = getopt.getopt(
+            args, '', [
+                'add-new-domains', 'delete-all-records', 'add-new-records', 'type=', 'name=', 'content='
+            ])
     except getopt.GetoptError:
-        exit(usage)
+        print(usage_str)
+        return
 
     cmd = None
-    i = 0
     for opt, arg in opts:
-        if i == 0:
-            if opt in ('--add-new-domains', '--delete-all-records', '--add-new-records'):
-                cmd = opt
-            else:
-                exit(usage)
+        if opt in ('--add-new-domains', '--delete-all-records', '--add-new-records'):
+            cmd = opt
         else:
             pass
-        i += 1
 
     if cmd is None or len(args) < 1:
-        exit(usage)
+        print(usage_str)
+        return
 
     domains_file_name = args[0]
 
