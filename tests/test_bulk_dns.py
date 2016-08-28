@@ -342,6 +342,10 @@ class TestBulkDns(unittest.TestCase):
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         sys.stdout = old_stdout
+        match = re.search(r"CSV\s+file\s+(\S+)\s+generated", my_stdout.getvalue().strip())
+        csv_file_name = match.group(1)
+        self.assertTrue(os.path.isfile(csv_file_name))
+        os.remove(csv_file_name)
 
 if __name__ == '__main__':
     unittest.main()
