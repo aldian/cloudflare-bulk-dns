@@ -11,6 +11,6 @@ In the mean time, there are 5 usages of this command line app:
 cloudflare_dns/bulk_dns.py --add-new-domain <domain_list_file>
 cloudflare_dns/bulk_dns.py --delete-all-records <domain_list_file>
 cloudflare_dns/bulk_dns.py --list-records <domain_list_file>
-cloudflare_dns/bulk_dns.py --add-new-records --type <record_type> --name <record_name> --content <record_content> <domain_list_file>
-cloudflare_dns/bulk_dns.py --edit-records --type <record_type> --name <record_name> --old-content <old_content> --new-content <new_content> <domain_list_file>
+cloudflare_dns/bulk_dns.py --add-new-records --type <record_type> [--name <record_name>] --content <record_content> <domain_list_file>
+cloudflare_dns/bulk_dns.py --edit-records --type <record_type> [--name <record_name>] [--old-content <old_content>] --new-content <new_content> <domain_list_file>
 ```
