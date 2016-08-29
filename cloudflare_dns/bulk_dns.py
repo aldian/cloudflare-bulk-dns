@@ -74,15 +74,38 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
     if zone_info is None:
         record_edited_cb(succeed=False, exception=ValueError('zone_info is None'))
         return
+
+    if record_name is None:
+        record_name = domain_name
+
+    if record_type == 'TXT':
+        modified_record_name = "{0}.{1}".format(record_name, domain_name)
+    else:
+        modified_record_name = record_name
     record_info = None
     page = 1
     while True:
         dns_records = cf_lib_wrapper.list_dns_records(zone_info['id'], page=page, per_page=20)
         for dns_record in dns_records:
-            if dns_record['type'] == record_type and dns_record['name'] == "{0}.{1}".format(record_name, domain_name) \
-                    and dns_record['content'] == old_record_content:
-                record_info = dns_record
-                break
+            if old_record_content is None:
+                if record_name is None:
+                    if dns_record['type'] == record_type:
+                        record_info = dns_record
+                        break
+                else:
+                    if dns_record['type'] == record_type and dns_record['name'] == modified_record_name:
+                        record_info = dns_record
+                        break
+            else:
+                if record_name is None:
+                    if dns_record['type'] == record_type and dns_record['content'] == old_record_content:
+                        record_info = dns_record
+                        break
+                else:
+                    if dns_record['type'] == record_type and dns_record['name'] == modified_record_name \
+                            and dns_record['content'] == old_record_content:
+                        record_info = dns_record
+                        break
         if (record_info is not None) or (len(dns_records) < 20):
             break
         page += 1
@@ -91,7 +114,7 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
         return
     try:
         record_info = cf_lib_wrapper.update_dns_record(
-            zone_info['id'], record_info['id'], record_type, record_name, new_record_content)
+            zone_info['id'], record_info['id'], record_info['type'], modified_record_name, new_record_content)
         record_edited_cb(succeed=True, response=record_info)
     except CloudFlareAPIError as e:
         record_edited_cb(succeed=False, exception=e)
