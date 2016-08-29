@@ -19,7 +19,7 @@ class CloudFlareLibWrapper(object):
             return zones[0]
 
     def create_zone(self, domain_name):
-        return self.cf.zones.post(data={'name': domain_name})
+        return self.cf.zones.post(data={'name': domain_name, 'proxied': True})
 
     def delete_zone_by_name(self, domain_name):
         zones = self.cf.zones.get(params={'name': domain_name, 'per_page': 1})

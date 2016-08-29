@@ -181,12 +181,28 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
         domain_name = 'add-purer-happen.host'
         # make sure zone existed before getting its info
         try:
-            self.lib_wrapper.create_zone(domain_name)
+            zone_info = self.lib_wrapper.create_zone(domain_name)
         except:
-            pass
-        # get the zone info
-        zone_info = self.lib_wrapper.get_zone_info(domain_name)
+            # get the zone info
+            zone_info = self.lib_wrapper.get_zone_info(domain_name)
         zone_id = zone_info['id']
+
+        record_info = None
+        page = 1
+        while True:
+            dns_records = self.lib_wrapper.list_dns_records(zone_id, page=page, per_page=20)
+            for dns_record in dns_records:
+                if dns_record['type'] == 'TXT' and dns_record['name'] == ('bar.' + domain_name) \
+                        and dns_record['content'] == 'foo':
+                    record_info = dns_record
+                    break
+
+            if (record_info is not None) or (len(dns_records) < 20):
+                break
+            page += 1
+
+        if record_info is not None:
+            self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
 
         record_info = self.lib_wrapper.create_dns_record(zone_id, "TXT", "bar", "foo")
         self.assertTrue('id' in record_info)
@@ -234,7 +250,6 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
                 if (record_info is not None) or (len(dns_records) < 20):
                     break
                 page += 1
-            pass
 
         self.assertIsNotNone(record_info)
         new_content = str(uuid.uuid4())

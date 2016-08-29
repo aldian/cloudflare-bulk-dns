@@ -63,7 +63,14 @@ def add_new_record(domain_name, record_type, record_name, record_content, record
     try:
         if not record_name:
             record_name = domain_name
-        record_info = cf_lib_wrapper.create_dns_record(zone_info['id'], record_type, record_name, record_content)
+
+        if "{{zone}}" in record_content:
+            modified_record_content = record_content.replace("{{zone}}", domain_name)
+        else:
+            modified_record_content = record_content
+
+        record_info = cf_lib_wrapper.create_dns_record(
+            zone_info['id'], record_type, record_name, modified_record_content)
         record_added_cb(succeed=True, response=record_info)
     except CloudFlareAPIError as e:
         record_added_cb(succeed=False, exception=e)
@@ -78,7 +85,7 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
     if record_name is None:
         record_name = domain_name
 
-    if record_type == 'TXT':
+    if record_type in ('TXT', 'CNAME'):
         modified_record_name = "{0}.{1}".format(record_name, domain_name)
     else:
         modified_record_name = record_name
@@ -97,13 +104,18 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
                         record_info = dns_record
                         break
             else:
+                if "{{zone}}" in old_record_content:
+                    modified_old_record_content = old_record_content.replace("{{zone}}", domain_name)
+                else:
+                    modified_old_record_content = old_record_content
+
                 if record_name is None:
-                    if dns_record['type'] == record_type and dns_record['content'] == old_record_content:
+                    if dns_record['type'] == record_type and dns_record['content'] == modified_old_record_content:
                         record_info = dns_record
                         break
                 else:
                     if dns_record['type'] == record_type and dns_record['name'] == modified_record_name \
-                            and dns_record['content'] == old_record_content:
+                            and dns_record['content'] == modified_old_record_content:
                         record_info = dns_record
                         break
         if (record_info is not None) or (len(dns_records) < 20):
@@ -113,8 +125,13 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
         record_edited_cb(succeed=False, exception=ValueError('Existing DNS record not found'))
         return
     try:
+        if "{{zone}}" in new_record_content:
+            modified_new_record_content = new_record_content.replace("{{zone}}", domain_name)
+        else:
+            modified_new_record_content = new_record_content
+
         record_info = cf_lib_wrapper.update_dns_record(
-            zone_info['id'], record_info['id'], record_info['type'], modified_record_name, new_record_content)
+            zone_info['id'], record_info['id'], record_info['type'], modified_record_name, modified_new_record_content)
         record_edited_cb(succeed=True, response=record_info)
     except CloudFlareAPIError as e:
         record_edited_cb(succeed=False, exception=e)
@@ -140,8 +157,8 @@ usage_str = (
     '\ncloudflare_dns/bulk_dns.py --add-new-domain <domain_list_file>' +
     '\ncloudflare_dns/bulk_dns.py --delete-all-records <domain_list_file>' +
     '\ncloudflare_dns/bulk_dns.py --list-records <domain_list_file>' +
-    '\ncloudflare_dns/bulk_dns.py --add-new-records --type <record_type> --name <record_name> --content <record_content> <domain_list_file>' +
-    '\ncloudflare_dns/bulk_dns.py --edit-records --type <record_type> --name <record_name> --old-content <old_content> --new-content <new_content> <domain_list_file>'
+    '\ncloudflare_dns/bulk_dns.py --add-new-records --type <record_type> [--name <record_name>] --content <record_content> <domain_list_file>' +
+    '\ncloudflare_dns/bulk_dns.py --edit-records --type <record_type> [--name <record_name>] [--old-content <old_content>] --new-content <new_content> <domain_list_file>'
 )
 
 
@@ -233,7 +250,9 @@ def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_n
             print("Adding records to zones listed in {0}:".format(domains_file_name))
             for line in f:
                 zone_name = line.strip()
-                add_new_record(zone_name, record_type, record_name, record_content, record_added_cb=record_added_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                add_new_record(
+                    zone_name, record_type, record_name, record_content,
+                    record_added_cb=record_added_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
                 counter += 1
             print("Added {0} records.".format(counter))
     print("CSV file {0} generated.".format(csv_name))
