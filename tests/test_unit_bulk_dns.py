@@ -3,6 +3,7 @@ from cStringIO import StringIO
 import os
 import re
 import sys
+import uuid
 import csv
 import unittest
 from test.test_support import EnvironmentVarGuard
@@ -247,7 +248,7 @@ class TestBulkDns(unittest.TestCase):
 
     def test_delete_all_records_succeed(self):
         domain_name = 'add-purer-happen.host'
-        records =[
+        records = [
             {'id': 'DNS RECORD ID 1'},
             {'id': 'DNS RECORD ID 2'},
             {'id': 'DNS RECORD ID 3'},
@@ -291,6 +292,23 @@ class TestBulkDns(unittest.TestCase):
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         self.assertEqual(21, len(responses))
+
+    def test_delete_all_records_failed_zone_info_none(self):
+        responses = []
+
+        def record_deleted_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            responses.append(exception)
+            self.assertEqual('zone_info is None', exception.message)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value=None)
+
+        bulk_dns.delete_all_records(
+            "{0}.com".format(str(uuid.uuid4())), record_deleted_cb=record_deleted_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
 
     def test_cli_delete_all_records_succeed(self):
         def delete_all_records_mock(domain_name, record_deleted_cb=None, cf_lib_wrapper=None):
@@ -377,7 +395,7 @@ class TestBulkDns(unittest.TestCase):
 
         self.assertEqual(1, len(responses))
 
-    def test_add_new_record_failed(self):
+    def test_add_new_record_failed_cf_api(self):
         responses = []
 
         def record_added_cb(**kwargs):
@@ -394,6 +412,23 @@ class TestBulkDns(unittest.TestCase):
 
         bulk_dns.add_new_record(
             domain_name, "TXT", "foo", "bar", record_added_cb=record_added_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_add_new_record_failed_zone_info_none(self):
+        responses = []
+
+        def record_added_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            self.assertEqual("zone_info is None", exception.message)
+            responses.append(exception)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value=None)
+
+        bulk_dns.add_new_record(
+            "{0}.com".format(str(uuid.uuid4())), "TXT", "foo", "bar", record_added_cb=record_added_cb,
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         self.assertEqual(1, len(responses))
@@ -497,6 +532,24 @@ class TestBulkDns(unittest.TestCase):
 
         self.assertEqual(21, len(responses))
 
+    def test_list_records_failed_zone_info_is_none(self):
+        responses = []
+
+        def record_listed_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            responses.append(exception)
+            self.assertEqual('zone_info is None', exception.message)
+
+        zone_name = '{0}.com'.format(str(uuid.uuid4))
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value=None)
+
+        bulk_dns.list_records(
+            zone_name, record_listed_cb=record_listed_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
     def test_cli_list_records_succeed(self):
         def list_records_mock(domain_name, record_listed_cb=None, cf_lib_wrapper=None):
             record_listed_cb(
@@ -578,6 +631,65 @@ class TestBulkDns(unittest.TestCase):
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         self.assertEqual(1, len(responses))
+
+    def test_edit_record_failed_zone_info_is_none(self):
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            responses.append(exception)
+            self.assertEqual('zone_info is None', exception.message)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value=None)
+
+        bulk_dns.edit_record(
+            "{0}.com".format(str(uuid.uuid4())), "TXT", "foo", "bar", "new bar", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_edit_record_failed_record_info_is_none(self):
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            responses.append(exception)
+            self.assertEqual('Existing DNS record not found', exception.message)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.list_dns_records = MagicMock(return_value=[])
+
+        bulk_dns.edit_record(
+            "{0}.com".format(str(uuid.uuid4())), "TXT", "foo", "bar", "new bar", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_edit_record_failed_update_dns_record(self):
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertFalse(kwargs['succeed'])
+            exception = kwargs['exception']
+            responses.append(exception)
+            self.assertEqual('Any Error Blah', exception.message)
+
+        zone_name = "{0}.com".format(str(uuid.uuid4()))
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.list_dns_records = MagicMock(
+            return_value=[{'id': 'DNS RECORD ID', 'type': 'TXT', 'name': 'foo.{0}'.format(zone_name), 'content': 'bar'}])
+        self.cf_lib_wrapper.update_dns_record = MagicMock(
+            side_effect=CloudFlareAPIError(code=-1, message='Any Error Blah'))
+
+        bulk_dns.edit_record(
+            zone_name, "TXT", "foo", "bar", "new bar", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+        pass
 
     def test_cli_edit_records_succeed(self):
         def edit_record_mock(
