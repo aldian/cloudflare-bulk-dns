@@ -61,6 +61,8 @@ def add_new_record(domain_name, record_type, record_name, record_content, record
         record_added_cb(succeed=False, exception=ValueError('zone_info is None'))
         return
     try:
+        if not record_name:
+            record_name = domain_name
         record_info = cf_lib_wrapper.create_dns_record(zone_info['id'], record_type, record_name, record_content)
         record_added_cb(succeed=True, response=record_info)
     except CloudFlareAPIError as e:
