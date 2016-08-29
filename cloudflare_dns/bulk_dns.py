@@ -1,11 +1,14 @@
 from __future__ import print_function
+
+import csv
+import datetime
+import getopt
 import os
 import sys
-import datetime
 from functools import wraps
-import csv
-import getopt
+
 from CloudFlare.exceptions import CloudFlareAPIError
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from cloudflare_dns import CloudFlareLibWrapper
 
@@ -24,6 +27,7 @@ def configured(f):
 
             kwargs['cf_lib_wrapper'] = CloudFlareLibWrapper(api_key, api_email)
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -76,7 +80,8 @@ def add_new_record(domain_name, record_type, record_name, record_content, record
         record_added_cb(succeed=False, exception=e)
 
 
-def edit_record(domain_name, record_type, record_name, old_record_content, new_record_content, record_edited_cb=None, cf_lib_wrapper=None):
+def edit_record(domain_name, record_type, record_name, old_record_content, new_record_content, record_edited_cb=None,
+                cf_lib_wrapper=None):
     zone_info = cf_lib_wrapper.get_zone_info(domain_name)
     if zone_info is None:
         record_edited_cb(succeed=False, exception=ValueError('zone_info is None'))
@@ -95,29 +100,18 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
         dns_records = cf_lib_wrapper.list_dns_records(zone_info['id'], page=page, per_page=20)
         for dns_record in dns_records:
             if old_record_content is None:
-                if record_name is None:
-                    if dns_record['type'] == record_type:
-                        record_info = dns_record
-                        break
-                else:
-                    if dns_record['type'] == record_type and dns_record['name'] == modified_record_name:
-                        record_info = dns_record
-                        break
+                if dns_record['type'] == record_type and dns_record['name'] == modified_record_name:
+                    record_info = dns_record
+                    break
             else:
                 if "{{zone}}" in old_record_content:
                     modified_old_record_content = old_record_content.replace("{{zone}}", domain_name)
                 else:
                     modified_old_record_content = old_record_content
 
-                if record_name is None:
-                    if dns_record['type'] == record_type and dns_record['content'] == modified_old_record_content:
-                        record_info = dns_record
-                        break
-                else:
-                    if dns_record['type'] == record_type and dns_record['name'] == modified_record_name \
-                            and dns_record['content'] == modified_old_record_content:
-                        record_info = dns_record
-                        break
+                if (dns_record['type'] == record_type) and (dns_record['name'] == modified_record_name) and (dns_record['content'] == modified_old_record_content):
+                    record_info = dns_record
+                    break
         if (record_info is not None) or (len(dns_records) < 20):
             break
         page += 1
@@ -130,8 +124,7 @@ def edit_record(domain_name, record_type, record_name, old_record_content, new_r
         else:
             modified_new_record_content = new_record_content
 
-        record_info = cf_lib_wrapper.update_dns_record(
-            zone_info['id'], record_info['id'], record_info['type'], modified_record_name, modified_new_record_content)
+        record_info = cf_lib_wrapper.update_dns_record(zone_info['id'], record_info['id'], record_info['type'], modified_record_name, modified_new_record_content)
         record_edited_cb(succeed=True, response=record_info)
     except CloudFlareAPIError as e:
         record_edited_cb(succeed=False, exception=e)
@@ -166,7 +159,7 @@ def cli_add_new_domains(domains_file_name, cf_lib_wrapper):
     counter = 0
     dt = datetime.datetime.now()
     csv_name = "cf_dns_add_new_domains_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
-            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     with open(csv_name, "wb") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(['name', 'status', 'id', 'type', 'created_on'])
@@ -174,7 +167,8 @@ def cli_add_new_domains(domains_file_name, cf_lib_wrapper):
         def domain_added_cb(succeed=None, response=None, exception=None):
             if succeed:
                 output_text = "added [{0}]: {1}".format(counter + 1, response['name'])
-                writer.writerow([response['name'], response['status'], response['id'], response['type'], response['created_on']])
+                writer.writerow(
+                    [response['name'], response['status'], response['id'], response['type'], response['created_on']])
             else:
                 output_text = "failed [{0}]: {1}".format(counter + 1, exception.message)
                 writer.writerow([response['name'], 'failed'])
@@ -213,13 +207,15 @@ def cli_delete_all_records(domains_file_name, cf_lib_wrapper):
                             counter + 1, response['id'], zone_name)
                         writer.writerow([zone_name, response['id'], 'failed'])
                 print(output_text)
+
             return record_deleted_cb
 
         with open(domains_file_name) as f:
             print("Deleting records from zones listed in {0}:".format(domains_file_name))
             for line in f:
                 zone_name = line.strip()
-                delete_all_records(zone_name, record_deleted_cb=record_deleted_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                delete_all_records(zone_name, record_deleted_cb=record_deleted_cb_wrapper(zone_name),
+                                   cf_lib_wrapper=cf_lib_wrapper)
                 counter += 1
             print("Deleted records from {0} zones.".format(counter))
     print("CSV file {0} generated.".format(csv_name))
@@ -244,6 +240,7 @@ def cli_add_new_records(domains_file_name, cf_lib_wrapper, record_type, record_n
                         counter + 1, zone_name)
                     writer.writerow([zone_name, 'failed: ' + exception.message])
                 print(output_text)
+
             return record_added_cb
 
         with open(domains_file_name) as f:
@@ -278,19 +275,22 @@ def cli_list_records(domains_file_name, cf_lib_wrapper):
                     output_text = "{0}: {1}".format(zone_name, exception.message)
                     writer.writerow([zone_name, exception.message])
                 print(output_text)
+
             return record_listed_cb
 
         with open(domains_file_name) as f:
             print("Listing DNS records from zones listed in {0}:".format(domains_file_name))
             for line in f:
                 zone_name = line.strip()
-                list_records(zone_name, record_listed_cb=record_listed_cb_wrapper(zone_name), cf_lib_wrapper=cf_lib_wrapper)
+                list_records(zone_name, record_listed_cb=record_listed_cb_wrapper(zone_name),
+                             cf_lib_wrapper=cf_lib_wrapper)
                 counter += 1
             print("Listed records from {0} zones.".format(counter))
     print("CSV file {0} generated.".format(csv_name))
 
 
-def cli_edit_records(domains_file_name, cf_lib_wrapper, record_type, record_name, old_record_content, new_record_content):
+def cli_edit_records(domains_file_name, cf_lib_wrapper, record_type, record_name, old_record_content,
+                     new_record_content):
     counter = 0
     dt = datetime.datetime.now()
     csv_name = "cf_dns_edit_records_{0:04}{1:02}{2:02}_{3:02}{4:02}{5:02}.csv".format(
@@ -309,6 +309,7 @@ def cli_edit_records(domains_file_name, cf_lib_wrapper, record_type, record_name
                         counter + 1, zone_name)
                     writer.writerow([zone_name, 'failed: ' + exception.message])
                 print(output_text)
+
             return record_edited_cb
 
         with open(domains_file_name) as f:
@@ -372,7 +373,8 @@ def cli(args, cf_lib_wrapper=None):
     elif cmd == '--list-records':
         cli_list_records(domains_file_name, cf_lib_wrapper)
     elif cmd == '--edit-records':
-        cli_edit_records(domains_file_name, cf_lib_wrapper, record_type, record_name, old_record_content, new_record_content)
+        cli_edit_records(domains_file_name, cf_lib_wrapper, record_type, record_name, old_record_content,
+                         new_record_content)
 
 
 if __name__ == "__main__":

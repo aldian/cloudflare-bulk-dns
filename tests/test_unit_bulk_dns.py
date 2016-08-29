@@ -395,6 +395,45 @@ class TestBulkDns(unittest.TestCase):
 
         self.assertEqual(1, len(responses))
 
+    def test_add_new_record_succeed_without_specifying_name(self):
+        responses = []
+
+        def record_added_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            responses.append(response)
+
+        domain_name = '{0}.com'.format(str(uuid.uuid4()))
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.create_dns_record = MagicMock(return_value={'id': 'DNS RECORD ID 345'})
+
+        bulk_dns.add_new_record(
+            domain_name, "A", None, "111.111.111.111", record_added_cb=record_added_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_add_new_record_succeed_with_content_template_zone(self):
+        responses = []
+
+        def record_added_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            responses.append(response)
+
+        domain_name = '{0}.com'.format(str(uuid.uuid4()))
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.create_dns_record = MagicMock(return_value={'id': 'DNS RECORD ID 345'})
+
+        bulk_dns.add_new_record(
+            domain_name, "CNAME", "www", "{{zone}}", record_added_cb=record_added_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+
     def test_add_new_record_failed_cf_api(self):
         responses = []
 
@@ -628,6 +667,126 @@ class TestBulkDns(unittest.TestCase):
 
         bulk_dns.edit_record(
             domain_name, "TXT", "foo", "bar", "new bar", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_edit_record_succeed_without_specifying_record_name(self):
+        domain_name = 'add-purer-happen.host'
+        dns_records = []
+        for i in range(1, 21):
+            dns_records.append({
+                'id': 'DNS RECORD ID {0}'.format(i),
+                'type': 'TXT', 'name': 'foo{0}.{1}'.format(i, domain_name),
+                'content': 'bar{0}'.format(i),
+            })
+        dns_records.append({
+            'id': 'DNS RECORD ID 345',
+            'type': 'A', 'name': domain_name,
+            'content': '111.111.111.111',
+        })
+        dns_records_page_1 = dns_records[:20]
+        dns_records_page_2 = dns_records[20:40]
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            self.assertEqual("222.222.222.222", response['content'])
+            responses.append(response)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.update_dns_record = MagicMock(
+            return_value={
+                'id': 'DNS RECORD ID 345',
+                'type': 'A', 'name': domain_name,
+                'content': '222.222.222.222',
+            })
+        self.cf_lib_wrapper.list_dns_records = MagicMock(side_effect=[dns_records_page_1, dns_records_page_2])
+
+        bulk_dns.edit_record(
+            domain_name, "A", None, "111.111.111.111", "222.222.222.222", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_edit_record_succeed_without_specifying_record_name_and_old_content(self):
+        domain_name = 'add-purer-happen.host'
+        dns_records = []
+        for i in range(1, 21):
+            dns_records.append({
+                'id': 'DNS RECORD ID {0}'.format(i),
+                'type': 'TXT', 'name': 'foo{0}.{1}'.format(i, domain_name),
+                'content': 'bar{0}'.format(i),
+            })
+        dns_records.append({
+            'id': 'DNS RECORD ID 345',
+            'type': 'A', 'name': domain_name,
+            'content': '111.111.111.111',
+        })
+        dns_records_page_1 = dns_records[:20]
+        dns_records_page_2 = dns_records[20:40]
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            self.assertEqual("222.222.222.222", response['content'])
+            responses.append(response)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.update_dns_record = MagicMock(
+            return_value={
+                'id': 'DNS RECORD ID 345',
+                'type': 'A', 'name': domain_name,
+                'content': '222.222.222.222',
+            })
+        self.cf_lib_wrapper.list_dns_records = MagicMock(side_effect=[dns_records_page_1, dns_records_page_2])
+
+        bulk_dns.edit_record(
+            domain_name, "A", None, None, "222.222.222.222", record_edited_cb=record_edited_cb,
+            cf_lib_wrapper=self.cf_lib_wrapper)
+
+        self.assertEqual(1, len(responses))
+
+    def test_edit_record_succeed_with_old_record_content_template_zone(self):
+        domain_name = 'add-purer-happen.host'
+        dns_records = []
+        for i in range(1, 21):
+            dns_records.append({
+                'id': 'DNS RECORD ID {0}'.format(i),
+                'type': 'TXT', 'name': 'foo{0}.{1}'.format(i, domain_name),
+                'content': 'bar{0}'.format(i),
+            })
+        dns_records.append({
+            'id': 'DNS RECORD ID 345',
+            'type': 'CNAME', 'name': 'www.{0}'.format(domain_name),
+            'content': domain_name,
+        })
+        dns_records_page_1 = dns_records[:20]
+        dns_records_page_2 = dns_records[20:40]
+        responses = []
+
+        def record_edited_cb(**kwargs):
+            self.assertTrue(kwargs['succeed'])
+            response = kwargs['response']
+            self.assertEqual("DNS RECORD ID 345", response['id'])
+            self.assertEqual("hello.{0}".format(domain_name), response['content'])
+            responses.append(response)
+
+        self.cf_lib_wrapper.get_zone_info = MagicMock(return_value={'id': 'ZONE ID'})
+        self.cf_lib_wrapper.update_dns_record = MagicMock(
+            return_value={
+                'id': 'DNS RECORD ID 345',
+                'type': 'CNAME', 'name': 'www.{0}'.format(domain_name),
+                'content': 'hello.{0}'.format(domain_name),
+            })
+        self.cf_lib_wrapper.list_dns_records = MagicMock(side_effect=[dns_records_page_1, dns_records_page_2])
+
+        bulk_dns.edit_record(
+            domain_name, "CNAME", "www", "{{zone}}", "hello.{{zone}}", record_edited_cb=record_edited_cb,
             cf_lib_wrapper=self.cf_lib_wrapper)
 
         self.assertEqual(1, len(responses))
