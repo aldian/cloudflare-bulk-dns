@@ -208,6 +208,40 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
         self.assertTrue('id' in record_info)
         self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
 
+    @unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    def test_create_dns_record_proxied(self):
+        zone_candidate = None
+        zone_page = 1
+        while True:
+            zones = self.lib_wrapper.list_zones(page=zone_page, per_page=20, status="active")
+            for zone in zones:
+                rec_page = 1
+                while True:
+                    records = self.lib_wrapper.list_dns_records(zone['id'], page=rec_page, per_page=20)
+                    len_records = len(records)
+                    if len_records < 20:
+                        if len_records < 1:
+                            zone_candidate = zone
+                        break
+                    rec_page += 1
+            if (zone_candidate is not None) or (len(zones) < 20):
+                break
+            zone_page += 1
+
+        self.assertIsNotNone(zone_candidate)
+        self.lib_wrapper.create_dns_record(zone_candidate['id'], 'A', zone_candidate['name'], '192.168.0.88')
+        dns_record = self.lib_wrapper.list_dns_records(zone_candidate['id'])[0]
+        print("ZONE", zone_candidate['name'], "DNS RECORD", dns_record['id'], dns_record['content'], 'PROXIABLE:', dns_record['proxiable'], 'PROXIED:', dns_record['proxied'], file=sys.stderr)
+        self.lib_wrapper.delete_dns_record(zone_candidate['id'], dns_record['id'])
+
+                        #         for record in records:
+                        # if record['proxiable']:
+                        #     print("PROXIABLE FOUND:", record['id'], file=sys.stderr)
+                        #     if not record['proxied']:
+                        #         print("PROXIABLE BUT NOT PROXIED FOUND: ", record['id'], file=sys.stderr)
+                        # else:
+                        #     print("RECORD", record['type'], record['content'], "OF ZONE", zone['name'], "IS NOT PROXIABLE", file=sys.stderr)
+
     #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
     def test_delete_dns_record(self):
         domain_name = 'analyze-dry.win'
@@ -261,6 +295,16 @@ class TestCloudFlareLibWrapper(unittest.TestCase):
 
         self.lib_wrapper.delete_dns_record(zone_id, record_info['id'])
 
+
+    #@unittest.skip("Temporarily skipped to prevent zone blocking by CloudFlare")
+    def test_update_record_proxiable(self):
+        zone_name = 'add-purer-happen.host'
+        content = '175.11.201.202'
+        record_id = 'fb45650191a01368b6c029e0447a16b5'
+
+        zone_info = self.lib_wrapper.get_zone_info(zone_name)
+        record_info = self.lib_wrapper.update_dns_record(zone_info['id'], record_id, 'A', zone_name, content)
+        self.assertTrue(record_info['proxied'])
 
 if __name__ == '__main__':
     unittest.main()

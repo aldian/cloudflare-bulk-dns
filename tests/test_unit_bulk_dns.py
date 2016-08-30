@@ -595,7 +595,7 @@ class TestBulkDns(unittest.TestCase):
                 succeed=True,
                 response={
                     'id': 'DNS RECORD ID', 'type': 'DNS RECORD TYPE', 'name': 'DNS RECORD NAME',
-                    'content': 'DNS RECORD CONTENT'})
+                    'content': 'DNS RECORD CONTENT', 'proxiable': True, 'proxied': False})
 
         list_records_original = bulk_dns.list_records
         bulk_dns.list_records = MagicMock(side_effect=list_records_mock)

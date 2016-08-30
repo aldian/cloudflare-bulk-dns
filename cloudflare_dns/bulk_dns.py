@@ -262,15 +262,15 @@ def cli_list_records(domains_file_name, cf_lib_wrapper):
         dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
     with open(csv_name, "wb") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(['zone name', 'record id', 'type', 'name', 'content'])
+        writer.writerow(['zone name', 'record id', 'type', 'name', 'content', 'proxiable', 'proxied'])
 
         def record_listed_cb_wrapper(zone_name):
             def record_listed_cb(succeed=None, response=None, exception=None):
                 if succeed:
-                    output_text = "{0}: record {1}. ID {2}. NAME {3}. CONTENT {4}".format(
-                        zone_name, response['type'], response['id'], response['name'], response['content'])
+                    output_text = "{0}: record {1}. ID {2}. NAME {3}. CONTENT {4}. PROXIABLE {5}. PROXIED {6}".format(
+                        zone_name, response['type'], response['id'], response['name'], response['content'], response['proxiable'], response['proxied'])
                     writer.writerow(
-                        [zone_name, response['id'], response['type'], response['name'], response['content']])
+                        [zone_name, response['id'], response['type'], response['name'], response['content'], response['proxiable'], response['proxied']])
                 else:
                     output_text = "{0}: {1}".format(zone_name, exception.message)
                     writer.writerow([zone_name, exception.message])

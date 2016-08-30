@@ -21,9 +21,6 @@ class CloudFlareLibWrapper(object):
     def create_zone(self, domain_name):
         data = {'name': domain_name}
         zone_info = self.cf.zones.post(data=data)
-        if (zone_info is not None) and zone_info.get('proxiable') and (not zone_info.get('proxied')):
-            data['proxied'] = True
-            self.cf.zones.put(zone_info['id'], data=data)
         return zone_info
 
     def delete_zone_by_name(self, domain_name):
@@ -61,7 +58,10 @@ class CloudFlareLibWrapper(object):
             "data": {}
         }
         """
-        data = {'name': record_name, 'type': record_type, 'content': content}
+        data = {
+            'name': record_name, 'type': record_type, 'content': content,
+            'zone_id': zone_id
+        }
         dns_record = self.cf.zones.dns_records.post(zone_id, data=data)
         if (dns_record is not None) and dns_record.get('proxiable') and (not dns_record.get('proxied')):
             data['proxied'] = True
