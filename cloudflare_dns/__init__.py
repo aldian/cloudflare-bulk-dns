@@ -19,7 +19,12 @@ class CloudFlareLibWrapper(object):
             return zones[0]
 
     def create_zone(self, domain_name):
-        return self.cf.zones.post(data={'name': domain_name, 'proxied': True})
+        data = {'name': domain_name}
+        zone_info = self.cf.zones.post(data=data)
+        if (zone_info is not None) and zone_info.get('proxiable') and (not zone_info.get('proxied')):
+            data['proxied'] = True
+            self.cf.zones.put(zone_info['id'], data=data)
+        return zone_info
 
     def delete_zone_by_name(self, domain_name):
         zones = self.cf.zones.get(params={'name': domain_name, 'per_page': 1})
@@ -56,8 +61,12 @@ class CloudFlareLibWrapper(object):
             "data": {}
         }
         """
-        return self.cf.zones.dns_records.post(
-            zone_id, data={'name': record_name, 'type': record_type, 'content': content})
+        data = {'name': record_name, 'type': record_type, 'content': content}
+        dns_record = self.cf.zones.dns_records.post(zone_id, data=data)
+        if (dns_record is not None) and dns_record.get('proxiable') and (not dns_record.get('proxied')):
+            data['proxied'] = True
+            dns_record = self.cf.zones.dns_records.put(zone_id, dns_record['id'], data)
+        return dns_record
 
     def delete_dns_record(self, zone_id, record_id):
         """ Deleting a DNS record
@@ -97,5 +106,9 @@ class CloudFlareLibWrapper(object):
             "data": {}
           }
         """
-        return self.cf.zones.dns_records.put(
-            zone_id, record_id, data={'name': record_name, 'type': record_type, 'content': content})
+        data = {'name': record_name, 'type': record_type, 'content': content}
+        dns_record = self.cf.zones.dns_records.put(zone_id, record_id, data=data)
+        if (dns_record is not None) and dns_record.get('proxiable') and (not dns_record.get('proxied')):
+            data['proxied'] = True
+            dns_record = self.cf.zones.dns_records.put(zone_id, record_id, data=data)
+        return dns_record
