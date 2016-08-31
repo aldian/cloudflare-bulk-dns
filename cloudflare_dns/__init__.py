@@ -1,4 +1,6 @@
+import time
 import CloudFlare
+from CloudFlare.exceptions import CloudFlareAPIError
 
 
 class CloudFlareLibWrapper(object):
@@ -65,7 +67,7 @@ class CloudFlareLibWrapper(object):
         dns_record = self.cf.zones.dns_records.post(zone_id, data=data)
         if (dns_record is not None) and dns_record.get('proxiable') and (not dns_record.get('proxied')):
             data['proxied'] = True
-            dns_record = self.cf.zones.dns_records.put(zone_id, dns_record['id'], data)
+            dns_record = self.cf.zones.dns_records.put(zone_id, dns_record['id'], data=data)
         return dns_record
 
     def delete_dns_record(self, zone_id, record_id):
